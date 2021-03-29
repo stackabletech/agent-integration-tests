@@ -1,0 +1,23 @@
+= Agent integration tests
+
+== Purpose
+The agent integration tests contain test cases for testing the
+https://github.com/stackabletech/agent[Agent] against a running Stackable
+cluster. The cluster with the agent must already be started before
+executing the integration tests and it must be reachable over the local
+Kubernetes configuration.
+
+== Build
+The Rust toolchain including Cargo must be installed. If you need to
+install this, generally the recommended way is to use
+https://rustup.rs/[rustup].
+
+The integration tests can be built and run with the following command:
+
+    cargo test
+
+== Contributing
+The agent and the integration tests are developed as open source tools
+and we absolutely welcome any contributions! Don't hesitate to drop us a
+line at info@stackable.de or reach out directly to any of our
+committers/contributors.

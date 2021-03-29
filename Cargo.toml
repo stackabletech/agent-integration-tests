@@ -1,0 +1,20 @@
+[package]
+name = "agent-integration-tests"
+version = "0.1.0"
+authors = ["Siegfried Weber <mail@siegfriedweber.net>"]
+edition = "2018"
+
+[dependencies]
+anyhow = "1.0"
+futures = "0.3"
+kube = "0.51"
+kube-derive = "0.51"
+kube-runtime = "0.51"
+k8s-openapi = { version = "0.11", default-features = false, features = ["v1_20"] }
+indoc = "1.0"
+schemars = "0.8"
+serde = "1.0"
+serde_json = "1.0"
+serde_yaml = "0.8"
+spectral = "0.6"
+tokio = { version = "1.4", features = ["rt-multi-thread"] }
