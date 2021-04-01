@@ -1,0 +1,54 @@
+name: Rust
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+
+env:
+  CARGO_TERM_COLOR: always
+
+jobs:
+  rustfmt:
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v2
+    - run: rustup update stable && rustup default stable
+    - run: sudo apt-get install libdbus-1-dev pkg-config libdbus-1-3
+    - run: rustup component add rustfmt
+    - run: cargo fmt --all -- --check
+
+  clippy_check:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Install dbus dependencies
+        run: sudo apt-get install libdbus-1-dev pkg-config libdbus-1-3
+      - uses: actions/checkout@v1
+      - uses: actions-rs/toolchain@v1
+        with:
+            toolchain: stable
+            components: clippy, rustfmt
+            override: true
+      - uses: actions-rs/clippy-check@v1
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          args: --all-features
+
+  build:
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v2
+    - name: Install dbus dependencies
+      run: sudo apt-get install libdbus-1-dev pkg-config libdbus-1-3
+    - name: Build
+      run: cargo build --tests --verbose
+
+  security_audit:
+    name: Run security audit
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v2
+      - uses: actions-rs/audit-check@v1
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
