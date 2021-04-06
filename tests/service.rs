@@ -46,6 +46,6 @@ fn create_repository(client: &TestKubeClient) {
         spec:
             repo_type: StackableRepo
             properties:
-                url: https://raw.githubusercontent.com/siegfriedweber/integration-test-repo/20c0c880168a8cc3aba29cba401383b2c25d5107/
+                url: https://raw.githubusercontent.com/stackabletech/integration-test-repo/6d784f1fb433123cb3b1d5cd7364a4553246d749/
     "));
 }
