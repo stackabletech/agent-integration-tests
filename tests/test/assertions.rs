@@ -5,7 +5,7 @@ use std::fmt::Debug;
 
 /// Additional assertions for Vec
 pub trait ExtendedVecAssertions<'s, T: 's> {
-    fn is_not_empty(&mut self);
+    fn is_not_empty(&self);
     fn contains_exactly_in_any_order<E: 's>(&mut self, expected_values_iter: &'s E)
     where
         E: IntoIterator<Item = &'s T> + Clone,
@@ -22,7 +22,7 @@ where
     /// let test_vec: Vec<u8> = vec![1];
     /// assert_that(&test_vec).is_not_empty();
     /// ```
-    fn is_not_empty(&mut self) {
+    fn is_not_empty(&self) {
         if self.subject.is_empty() {
             AssertionFailure::from_spec(self)
                 .with_expected(String::from("a non-empty vec"))
