@@ -4,8 +4,10 @@
 
 use anyhow::Result;
 use futures::{StreamExt, TryStreamExt};
-use k8s_openapi::api::core::v1::Pod;
-use k8s_openapi::apiextensions_apiserver::pkg::apis::apiextensions::v1::CustomResourceDefinition;
+use k8s_openapi::api::core::v1::{Node, NodeCondition, Pod, PodCondition, Taint};
+use k8s_openapi::apiextensions_apiserver::pkg::apis::apiextensions::v1::{
+    CustomResourceDefinition, CustomResourceDefinitionCondition,
+};
 use kube::api::{
     Api, DeleteParams, ListParams, Meta, ObjectList, Patch, PatchParams, PostParams, WatchEvent,
 };
@@ -161,13 +163,9 @@ impl KubeClient {
     /// Applies the given custom resource definition and awaits the accepted status.
     pub async fn apply_crd(&self, crd: &CustomResourceDefinition) -> anyhow::Result<()> {
         let is_ready = |crd: &CustomResourceDefinition| {
-            crd.status
-                .as_ref()
-                .and_then(|status| status.conditions.as_ref())
-                .and_then(|conditions| conditions.iter().find(|c| c.type_ == "NamesAccepted"))
-                .map(|condition| &condition.status)
-                .filter(|status| *status == "True")
-                .is_some()
+            get_crd_conditions(crd)
+                .iter()
+                .any(|condition| condition.type_ == "NamesAccepted" && condition.status == "True")
         };
 
         let timeout_secs = 30;
@@ -295,13 +293,9 @@ impl KubeClient {
         condition_type: &str,
     ) -> anyhow::Result<()> {
         let is_condition_true = |pod: &Pod| {
-            pod.status
-                .as_ref()
-                .and_then(|status| status.conditions.as_ref())
-                .and_then(|conditions| conditions.iter().find(|c| c.type_ == condition_type))
-                .map(|condition| &condition.status)
-                .filter(|status| *status == "True")
-                .is_some()
+            get_pod_conditions(pod)
+                .iter()
+                .any(|condition| condition.type_ == condition_type && condition.status == "True")
         };
 
         if is_condition_true(&pod) {
@@ -346,4 +340,38 @@ where
     T: DeserializeOwned,
 {
     serde_yaml::from_str(str).expect("String is not a well-formed YAML")
+}
+
+/// Returns the conditions of the given node.
+pub fn get_node_conditions(node: &Node) -> Vec<NodeCondition> {
+    node.status
+        .as_ref()
+        .and_then(|status| status.conditions.clone())
+        .unwrap_or_else(Vec::new)
+}
+
+/// Returns the conditions of the given pod.
+pub fn get_pod_conditions(pod: &Pod) -> Vec<PodCondition> {
+    pod.status
+        .as_ref()
+        .and_then(|status| status.conditions.clone())
+        .unwrap_or_else(Vec::new)
+}
+
+/// Returns the conditions of the given custom resource definition.
+pub fn get_crd_conditions(
+    crd: &CustomResourceDefinition,
+) -> Vec<CustomResourceDefinitionCondition> {
+    crd.status
+        .as_ref()
+        .and_then(|status| status.conditions.clone())
+        .unwrap_or_else(Vec::new)
+}
+
+/// Returns the taints of the given node.
+pub fn get_node_taints(node: &Node) -> Vec<Taint> {
+    node.spec
+        .as_ref()
+        .and_then(|spec| spec.taints.clone())
+        .unwrap_or_else(Vec::new)
 }
