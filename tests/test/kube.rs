@@ -2,14 +2,15 @@
 //!
 //! These clients simplify testing.
 
-use anyhow::Result;
+use anyhow::{anyhow, Result};
 use futures::{StreamExt, TryStreamExt};
 use k8s_openapi::api::core::v1::{Node, NodeCondition, Pod, PodCondition, Taint};
 use k8s_openapi::apiextensions_apiserver::pkg::apis::apiextensions::v1::{
     CustomResourceDefinition, CustomResourceDefinitionCondition,
 };
 use kube::api::{
-    Api, DeleteParams, ListParams, Meta, ObjectList, Patch, PatchParams, PostParams, WatchEvent,
+    Api, DeleteParams, ListParams, LogParams, Meta, ObjectList, Patch, PatchParams, PostParams,
+    WatchEvent,
 };
 use kube::Client;
 use serde::de::DeserializeOwned;
@@ -125,6 +126,16 @@ impl TestKubeClient {
                 .expect("Pod condition could not be verified")
         })
     }
+
+    /// Returns the logs for the given pod.
+    pub fn get_logs(&self, pod: &Pod, tail_lines: Option<i64>) -> Vec<String> {
+        self.runtime.block_on(async {
+            self.kube_client
+                .get_logs(pod, tail_lines)
+                .await
+                .expect("Logs could not be retrieved")
+        })
+    }
 }
 
 /// A client for interacting with the Kubernetes API
@@ -161,7 +172,7 @@ impl KubeClient {
     }
 
     /// Applies the given custom resource definition and awaits the accepted status.
-    pub async fn apply_crd(&self, crd: &CustomResourceDefinition) -> anyhow::Result<()> {
+    pub async fn apply_crd(&self, crd: &CustomResourceDefinition) -> Result<()> {
         let is_ready = |crd: &CustomResourceDefinition| {
             get_crd_conditions(crd)
                 .iter()
@@ -193,7 +204,7 @@ impl KubeClient {
             }
         }
 
-        Err(anyhow::anyhow!(
+        Err(anyhow!(
             "Custom resource definition [{}] could not be applied within {} seconds.",
             crd.name(),
             timeout_secs
@@ -234,10 +245,10 @@ impl KubeClient {
         let resource = from_yaml(spec);
         api.create(&PostParams::default(), &resource).await?;
 
-        let lp = ListParams::default()
+        let list_params = ListParams::default()
             .fields(&format!("metadata.name={}", resource.name()))
             .timeout(timeout_secs);
-        let mut stream = api.watch(&lp, "0").await?.boxed();
+        let mut stream = api.watch(&list_params, "0").await?.boxed();
 
         while let Some(status) = stream.try_next().await? {
             if let WatchEvent::Added(resource) = status {
@@ -245,7 +256,7 @@ impl KubeClient {
             }
         }
 
-        Err(anyhow::anyhow!(
+        Err(anyhow!(
             "Resource [{}] could not be created within {} seconds.",
             resource.name(),
             timeout_secs
@@ -268,10 +279,10 @@ impl KubeClient {
             return Ok(());
         }
 
-        let lp = ListParams::default()
+        let list_params = ListParams::default()
             .fields(&format!("metadata.name={}", resource.name()))
             .timeout(timeout_secs);
-        let mut stream = api.watch(&lp, "0").await?.boxed();
+        let mut stream = api.watch(&list_params, "0").await?.boxed();
 
         while let Some(status) = stream.try_next().await? {
             if let WatchEvent::Deleted(_) = status {
@@ -279,7 +290,7 @@ impl KubeClient {
             }
         }
 
-        Err(anyhow::anyhow!(
+        Err(anyhow!(
             "Resource [{}] could not be deleted within {} seconds.",
             resource.name(),
             timeout_secs
@@ -287,11 +298,7 @@ impl KubeClient {
     }
 
     /// Verifies that the given pod condition becomes true within 30 seconds.
-    pub async fn verify_pod_condition(
-        &self,
-        pod: &Pod,
-        condition_type: &str,
-    ) -> anyhow::Result<()> {
+    pub async fn verify_pod_condition(&self, pod: &Pod, condition_type: &str) -> Result<()> {
         let is_condition_true = |pod: &Pod| {
             get_pod_conditions(pod)
                 .iter()
@@ -318,11 +325,35 @@ impl KubeClient {
             }
         }
 
-        Err(anyhow::anyhow!(
+        Err(anyhow!(
             "Pod condition [{}] was not satisfied within {} seconds",
             condition_type,
             timeout_secs
         ))
+    }
+
+    /// Returns the logs for the given pod.
+    pub async fn get_logs(&self, pod: &Pod, tail_lines: Option<i64>) -> Result<Vec<String>> {
+        let pods: Api<Pod> = Api::namespaced(self.client.clone(), &self.namespace);
+
+        let log_params = LogParams {
+            tail_lines,
+            ..Default::default()
+        };
+
+        let bytes = pods
+            .log_stream(&pod.name(), &log_params)
+            .await?
+            .try_collect::<Vec<_>>()
+            .await?
+            .concat();
+
+        let lines = String::from_utf8_lossy(&bytes)
+            .lines()
+            .map(|line| line.to_owned())
+            .collect();
+
+        Ok(lines)
     }
 }
 
