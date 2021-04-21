@@ -1,30 +1,79 @@
-# This is a basic workflow to help you get started with Actions
-
 name: Integration tests
 
-# Controls when the action will run. 
 on:
-  # Allows you to run this workflow manually from the Actions tab
+
   workflow_dispatch:
 
-# A workflow run is made up of one or more jobs that can run sequentially or in parallel
 jobs:
-  # This workflow contains a single job called "build"
-  build:
-    # The type of runner that the job will run on
-    runs-on: ubuntu-latest
 
-    # Steps represent a sequence of tasks that will be executed as part of the job
+  integration_test:
+
+    runs-on: debian10
+
     steps:
-      # Checks-out your repository under $GITHUB_WORKSPACE, so your job can access it
+
+      - name: cleanup workspace
+        run: |
+          rm -rf *
+          rm -rf .git*
+
       - uses: actions/checkout@v2
 
-      # Runs a single command using the runners shell
-      - name: Run a one-line script
-        run: echo Hello, world!
-
-      # Runs a set of commands using the runners shell
-      - name: Run a multi-line script
+      - name: Assure that Python3 is available
         run: |
-          echo Add other actions to build,
-          echo test, and deploy your project.
+          which python3
+
+      - name: Generate SSH key to access cluster
+        run: | 
+          ssh-keygen -f ./mykey -q -N "" -C ""
+
+      - name: Add SSH key to cluster definition template 
+        run: |
+          cat .github/workflows/resources/cluster-definition.yaml | sed "s~@ssh_public_key@~$(cat mykey.pub)~" > cluster-definition.yaml
+          cat cluster-definition.yaml
+
+      - name: Download Scripts to launch and terminate Stackable clusters with T2
+        run: |
+          curl https://raw.githubusercontent.com/stackabletech/pit/197ead1d80f55c642b5c353a75c9331f443367e6/src/main/python/launch.py > launch.py
+          curl https://raw.githubusercontent.com/stackabletech/pit/197ead1d80f55c642b5c353a75c9331f443367e6/src/main/python/terminate.py > terminate.py
+
+      - name: Launch cluster via T2 API
+        env:
+          T2_TOKEN: ${{ secrets.T2_TOKEN }}
+        run: | 
+          python3 launch.py https://t2.stackable.tech "$T2_TOKEN" cluster-definition.yaml
+
+      - name: Get Stackable client script from server
+        env:
+          T2_TOKEN: ${{ secrets.T2_TOKEN }}
+        run: | 
+          curl -H "t2-token: $T2_TOKEN" https://t2.stackable.tech/api/clusters/`cat cluster_uuid`/stackable-client-script > stackable.sh
+          chmod u+x stackable.sh
+
+      - name: Test (step 1) - install Rust and required tools
+        run: | 
+          ./stackable.sh testdriver-1 -i ./mykey "echo '13.32.25.75     static.rust-lang.org' >> /etc/hosts"
+          ./stackable.sh testdriver-1 -i ./mykey "curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y"
+          ./stackable.sh testdriver-1 -i ./mykey "cargo --version"
+          ./stackable.sh testdriver-1 -i ./mykey "apt-get install gcc -y"
+          ./stackable.sh testdriver-1 -i ./mykey "apt-get install libssl-dev -y"
+          ./stackable.sh testdriver-1 -i ./mykey "apt-get install pkg-config -y"
+
+      - name: Test (step 2) - clone repository
+        run: | 
+          ./stackable.sh testdriver-1 -i ./mykey "apt-get install git -y"
+          ./stackable.sh testdriver-1 -i ./mykey "git --version"
+          ./stackable.sh testdriver-1 -i ./mykey "git clone https://github.com/stackabletech/agent-integration-tests.git"
+ 
+      - name: Test (step 3) - run tests
+        run: | 
+          ./stackable.sh testdriver-1 -i ./mykey "cd agent-integration-tests/ && cargo test"
+
+      - name: Terminate cluster via T2 API
+        if: always()
+        env:
+          T2_TOKEN: ${{ secrets.T2_TOKEN }}
+        run: | 
+          python3 terminate.py https://t2.stackable.tech "$T2_TOKEN" `cat cluster_uuid`
+
+ 
