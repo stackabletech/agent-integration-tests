@@ -49,7 +49,7 @@ impl TestKubeClient {
     /// separated: `key1=value1,key2=value2`.
     pub fn list_labeled<K>(&self, label_selector: &str) -> ObjectList<K>
     where
-        K: k8s_openapi::Resource + Clone + DeserializeOwned + Meta,
+        K: Clone + DeserializeOwned + Meta,
     {
         self.runtime.block_on(async {
             self.kube_client
@@ -72,7 +72,7 @@ impl TestKubeClient {
     /// Searches for a named resource.
     pub fn find<K>(&self, name: &str) -> Option<K>
     where
-        K: k8s_openapi::Resource + Clone + DeserializeOwned + Meta,
+        K: Clone + DeserializeOwned + Meta,
     {
         self.runtime
             .block_on(async { self.kube_client.find::<K>(name).await })
@@ -81,7 +81,7 @@ impl TestKubeClient {
     /// Applies a resource with the given YAML specification.
     pub fn apply<K>(&self, spec: &str) -> K
     where
-        K: k8s_openapi::Resource + Clone + DeserializeOwned + Meta + Serialize,
+        K: Clone + DeserializeOwned + Meta + Serialize,
     {
         self.runtime.block_on(async {
             self.kube_client
@@ -94,7 +94,7 @@ impl TestKubeClient {
     /// Creates a resource with the given YAML specification.
     pub fn create<K>(&self, spec: &str) -> K
     where
-        K: k8s_openapi::Resource + Clone + DeserializeOwned + Meta + Serialize,
+        K: Clone + DeserializeOwned + Meta + Serialize,
     {
         self.runtime.block_on(async {
             self.kube_client
@@ -107,7 +107,7 @@ impl TestKubeClient {
     /// Deletes the given resource.
     pub fn delete<K>(&self, resource: K)
     where
-        K: k8s_openapi::Resource + Clone + DeserializeOwned + Meta,
+        K: Clone + DeserializeOwned + Meta,
     {
         self.runtime.block_on(async {
             self.kube_client
@@ -164,7 +164,7 @@ impl KubeClient {
     /// `key1=value1,key2=value2`.
     pub async fn list_labeled<K>(&self, label_selector: &str) -> Result<ObjectList<K>>
     where
-        K: k8s_openapi::Resource + Clone + DeserializeOwned + Meta,
+        K: Clone + DeserializeOwned + Meta,
     {
         let api: Api<K> = Api::all(self.client.clone());
         let lp = ListParams::default().labels(label_selector);
@@ -214,7 +214,7 @@ impl KubeClient {
     /// Searches for a named resource.
     pub async fn find<K>(&self, name: &str) -> Option<K>
     where
-        K: k8s_openapi::Resource + Clone + DeserializeOwned + Meta,
+        K: Clone + DeserializeOwned + Meta,
     {
         let api: Api<K> = Api::namespaced(self.client.clone(), &self.namespace);
         api.get(name).await.ok()
@@ -223,7 +223,7 @@ impl KubeClient {
     /// Applies a resource with the given YAML specification.
     pub async fn apply<K>(&self, spec: &str) -> Result<K>
     where
-        K: k8s_openapi::Resource + Clone + DeserializeOwned + Meta + Serialize,
+        K: Clone + DeserializeOwned + Meta + Serialize,
     {
         let resource: K = from_yaml(spec);
         let apply_params = PatchParams::apply("agent_integration_test").force();
@@ -237,7 +237,7 @@ impl KubeClient {
     /// confirmation of the creation.
     pub async fn create<K>(&self, spec: &str) -> Result<K>
     where
-        K: k8s_openapi::Resource + Clone + DeserializeOwned + Meta + Serialize,
+        K: Clone + DeserializeOwned + Meta + Serialize,
     {
         let timeout_secs = 10;
         let api: Api<K> = Api::namespaced(self.client.clone(), &self.namespace);
@@ -266,7 +266,7 @@ impl KubeClient {
     /// Deletes the given resource and awaits the confirmation of the deletion.
     pub async fn delete<K>(&self, resource: K) -> Result<()>
     where
-        K: k8s_openapi::Resource + Clone + DeserializeOwned + Meta,
+        K: Clone + DeserializeOwned + Meta,
     {
         let timeout_secs = 10;
         let api: Api<K> = Api::namespaced(self.client.clone(), &self.namespace);
