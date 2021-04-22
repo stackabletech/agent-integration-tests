@@ -1,3 +1,5 @@
+use super::prelude::TestKubeClient;
+use indoc::indoc;
 use kube_derive::CustomResource;
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
@@ -19,4 +21,20 @@ pub struct RepositorySpec {
 #[derive(Deserialize, Serialize, Clone, Debug, JsonSchema)]
 pub enum RepoType {
     StackableRepo,
+}
+
+pub fn setup_repository(client: &TestKubeClient) {
+    client.apply_crd(&Repository::crd());
+
+    client.apply::<Repository>(indoc! {"
+        apiVersion: stable.stackable.de/v1
+        kind: Repository
+        metadata:
+            name: integration-test-repository
+            namespace: default
+        spec:
+            repo_type: StackableRepo
+            properties:
+                url: https://raw.githubusercontent.com/stackabletech/integration-test-repo/main/
+    "});
 }
