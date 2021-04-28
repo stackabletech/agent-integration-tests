@@ -31,7 +31,7 @@ jobs:
         env:
           T2_TOKEN: ${{ secrets.T2_TOKEN }}
         run: | 
-          python3 t2.py launch "$T2_TOKEN" https://t2.stackable.tech cluster-definition.yaml
+          python3 t2.py launch "$T2_TOKEN" https://t2.stackable.tech .github/workflows/resources/cluster-definition.yaml
 
       - name: Test (step 1) - install Rust and required tools
         run: | 
