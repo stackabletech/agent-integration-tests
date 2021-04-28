@@ -6,8 +6,7 @@ metadata:
   name: agent-integration-tests
   description: "Cluster for Agent Integration Tests"
 domain: stackable.test
-publicKeys:
-  - "@ssh_public_key@"
+publicKeys: []
 spec:
   region: de/fra
   nodes:
