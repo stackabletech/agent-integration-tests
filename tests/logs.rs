@@ -50,8 +50,8 @@ impl<'a> EchoService<'a> {
         EchoService { client, pod }
     }
 
-    pub fn get_logs(&self, tail_lines: Option<i64>) -> Vec<String> {
-        self.client.get_logs(&self.pod, tail_lines)
+    pub fn get_logs(&self, params: &LogParams) -> Vec<String> {
+        self.client.get_logs(&self.pod, params)
     }
 }
 
@@ -62,7 +62,7 @@ fn all_logs_should_be_retrievable() {
     let log_output = vec!["line 1", "line 2", "line 3"];
     let echo_service = EchoService::new(&client, &log_output);
 
-    let logs = echo_service.get_logs(None);
+    let logs = echo_service.get_logs(&LogParams::default());
     assert_equals(&["line 1", "line 2", "line 3"], &logs);
 }
 
@@ -73,19 +73,24 @@ fn the_tail_of_logs_should_be_retrievable() {
     let log_output = vec!["line 1", "line 2", "line 3"];
     let echo_service = EchoService::new(&client, &log_output);
 
-    let logs = echo_service.get_logs(Some(0));
+    let with_tail_lines = |tail_lines| LogParams {
+        tail_lines: Some(tail_lines),
+        ..Default::default()
+    };
+
+    let logs = echo_service.get_logs(&with_tail_lines(0));
     assert_that(&logs).is_empty();
 
-    let logs = echo_service.get_logs(Some(1));
+    let logs = echo_service.get_logs(&with_tail_lines(1));
     assert_equals(&["line 3"], &logs);
 
-    let logs = echo_service.get_logs(Some(2));
+    let logs = echo_service.get_logs(&with_tail_lines(2));
     assert_equals(&["line 2", "line 3"], &logs);
 
-    let logs = echo_service.get_logs(Some(3));
+    let logs = echo_service.get_logs(&with_tail_lines(3));
     assert_equals(&["line 1", "line 2", "line 3"], &logs);
 
-    let logs = echo_service.get_logs(Some(4));
+    let logs = echo_service.get_logs(&with_tail_lines(4));
     assert_equals(&["line 1", "line 2", "line 3"], &logs);
 }
 
@@ -96,7 +101,7 @@ fn non_ascii_characters_should_be_handled_correctly() {
     let log_output = vec!["Spade: ♠", "Heart: ♥", "Diamond: ♦", "Club: ♣"];
     let echo_service = EchoService::new(&client, &log_output);
 
-    let logs = echo_service.get_logs(None);
+    let logs = echo_service.get_logs(&LogParams::default());
     assert_equals(&["Spade: ♠", "Heart: ♥", "Diamond: ♦", "Club: ♣"], &logs);
 }
 
