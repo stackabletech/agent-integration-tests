@@ -46,7 +46,7 @@ jobs:
         run: | 
           ./stackable.sh testdriver-1 -i ./.cluster/key "apt-get install git -y"
           ./stackable.sh testdriver-1 -i ./.cluster/key "git --version"
-          ./stackable.sh testdriver-1 -i ./.cluster/key "git clone https://github.com/stackabletech/agent-integration-tests.git"
+          ./stackable.sh testdriver-1 -i ./.cluster/key "git clone -b ${GITHUB_REF##*/} https://github.com/stackabletech/agent-integration-tests.git"
  
       - name: Test (step 3) - run tests
         run: | 
