@@ -9,14 +9,15 @@ use k8s_openapi::apiextensions_apiserver::pkg::apis::apiextensions::v1::{
     CustomResourceDefinition, CustomResourceDefinitionCondition,
 };
 use kube::api::{
-    Api, DeleteParams, ListParams, LogParams, Meta, ObjectList, Patch, PatchParams, PostParams,
-    WatchEvent,
+    Api, DeleteParams, ListParams, Meta, ObjectList, Patch, PatchParams, PostParams, WatchEvent,
 };
 use kube::Client;
 use serde::de::DeserializeOwned;
 use serde::Serialize;
 use serde_json::Value;
 use tokio::runtime::Runtime;
+
+pub use kube::api::LogParams;
 
 /// A client for interacting with the Kubernetes API
 ///
@@ -128,10 +129,10 @@ impl TestKubeClient {
     }
 
     /// Returns the logs for the given pod.
-    pub fn get_logs(&self, pod: &Pod, tail_lines: Option<i64>) -> Vec<String> {
+    pub fn get_logs(&self, pod: &Pod, params: &LogParams) -> Vec<String> {
         self.runtime.block_on(async {
             self.kube_client
-                .get_logs(pod, tail_lines)
+                .get_logs(pod, params)
                 .await
                 .expect("Logs could not be retrieved")
         })
@@ -333,16 +334,11 @@ impl KubeClient {
     }
 
     /// Returns the logs for the given pod.
-    pub async fn get_logs(&self, pod: &Pod, tail_lines: Option<i64>) -> Result<Vec<String>> {
+    pub async fn get_logs(&self, pod: &Pod, params: &LogParams) -> Result<Vec<String>> {
         let pods: Api<Pod> = Api::namespaced(self.client.clone(), &self.namespace);
 
-        let log_params = LogParams {
-            tail_lines,
-            ..Default::default()
-        };
-
         let bytes = pods
-            .log_stream(&pod.name(), &log_params)
+            .log_stream(&pod.name(), params)
             .await?
             .try_collect::<Vec<_>>()
             .await?
