@@ -50,7 +50,7 @@ jobs:
  
       - name: Test (step 3) - run tests
         run: | 
-          ./stackable.sh testdriver-1 -i ./.cluster/key "cd agent-integration-tests/ && cargo test"
+          ./stackable.sh testdriver-1 -i ./.cluster/key "cd agent-integration-tests/ && cargo test -- --test-threads=1"
 
       - name: Terminate cluster via T2 API
         if: always()

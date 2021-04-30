@@ -2,7 +2,7 @@
 //!
 //! These clients simplify testing.
 
-use anyhow::Result;
+use anyhow::{anyhow, Result};
 use futures::{StreamExt, TryStreamExt};
 use k8s_openapi::api::core::v1::{Node, NodeCondition, Pod, PodCondition, Taint};
 use k8s_openapi::apiextensions_apiserver::pkg::apis::apiextensions::v1::{
@@ -16,6 +16,8 @@ use serde::de::DeserializeOwned;
 use serde::Serialize;
 use serde_json::Value;
 use tokio::runtime::Runtime;
+
+pub use kube::api::LogParams;
 
 /// A client for interacting with the Kubernetes API
 ///
@@ -48,7 +50,7 @@ impl TestKubeClient {
     /// separated: `key1=value1,key2=value2`.
     pub fn list_labeled<K>(&self, label_selector: &str) -> ObjectList<K>
     where
-        K: k8s_openapi::Resource + Clone + DeserializeOwned + Meta,
+        K: Clone + DeserializeOwned + Meta,
     {
         self.runtime.block_on(async {
             self.kube_client
@@ -71,7 +73,7 @@ impl TestKubeClient {
     /// Searches for a named resource.
     pub fn find<K>(&self, name: &str) -> Option<K>
     where
-        K: k8s_openapi::Resource + Clone + DeserializeOwned + Meta,
+        K: Clone + DeserializeOwned + Meta,
     {
         self.runtime
             .block_on(async { self.kube_client.find::<K>(name).await })
@@ -80,7 +82,7 @@ impl TestKubeClient {
     /// Applies a resource with the given YAML specification.
     pub fn apply<K>(&self, spec: &str) -> K
     where
-        K: k8s_openapi::Resource + Clone + DeserializeOwned + Meta + Serialize,
+        K: Clone + DeserializeOwned + Meta + Serialize,
     {
         self.runtime.block_on(async {
             self.kube_client
@@ -93,7 +95,7 @@ impl TestKubeClient {
     /// Creates a resource with the given YAML specification.
     pub fn create<K>(&self, spec: &str) -> K
     where
-        K: k8s_openapi::Resource + Clone + DeserializeOwned + Meta + Serialize,
+        K: Clone + DeserializeOwned + Meta + Serialize,
     {
         self.runtime.block_on(async {
             self.kube_client
@@ -106,7 +108,7 @@ impl TestKubeClient {
     /// Deletes the given resource.
     pub fn delete<K>(&self, resource: K)
     where
-        K: k8s_openapi::Resource + Clone + DeserializeOwned + Meta,
+        K: Clone + DeserializeOwned + Meta,
     {
         self.runtime.block_on(async {
             self.kube_client
@@ -123,6 +125,16 @@ impl TestKubeClient {
                 .verify_pod_condition(pod, condition_type)
                 .await
                 .expect("Pod condition could not be verified")
+        })
+    }
+
+    /// Returns the logs for the given pod.
+    pub fn get_logs(&self, pod: &Pod, params: &LogParams) -> Vec<String> {
+        self.runtime.block_on(async {
+            self.kube_client
+                .get_logs(pod, params)
+                .await
+                .expect("Logs could not be retrieved")
         })
     }
 }
@@ -153,7 +165,7 @@ impl KubeClient {
     /// `key1=value1,key2=value2`.
     pub async fn list_labeled<K>(&self, label_selector: &str) -> Result<ObjectList<K>>
     where
-        K: k8s_openapi::Resource + Clone + DeserializeOwned + Meta,
+        K: Clone + DeserializeOwned + Meta,
     {
         let api: Api<K> = Api::all(self.client.clone());
         let lp = ListParams::default().labels(label_selector);
@@ -161,7 +173,7 @@ impl KubeClient {
     }
 
     /// Applies the given custom resource definition and awaits the accepted status.
-    pub async fn apply_crd(&self, crd: &CustomResourceDefinition) -> anyhow::Result<()> {
+    pub async fn apply_crd(&self, crd: &CustomResourceDefinition) -> Result<()> {
         let is_ready = |crd: &CustomResourceDefinition| {
             get_crd_conditions(crd)
                 .iter()
@@ -193,7 +205,7 @@ impl KubeClient {
             }
         }
 
-        Err(anyhow::anyhow!(
+        Err(anyhow!(
             "Custom resource definition [{}] could not be applied within {} seconds.",
             crd.name(),
             timeout_secs
@@ -203,7 +215,7 @@ impl KubeClient {
     /// Searches for a named resource.
     pub async fn find<K>(&self, name: &str) -> Option<K>
     where
-        K: k8s_openapi::Resource + Clone + DeserializeOwned + Meta,
+        K: Clone + DeserializeOwned + Meta,
     {
         let api: Api<K> = Api::namespaced(self.client.clone(), &self.namespace);
         api.get(name).await.ok()
@@ -212,7 +224,7 @@ impl KubeClient {
     /// Applies a resource with the given YAML specification.
     pub async fn apply<K>(&self, spec: &str) -> Result<K>
     where
-        K: k8s_openapi::Resource + Clone + DeserializeOwned + Meta + Serialize,
+        K: Clone + DeserializeOwned + Meta + Serialize,
     {
         let resource: K = from_yaml(spec);
         let apply_params = PatchParams::apply("agent_integration_test").force();
@@ -226,7 +238,7 @@ impl KubeClient {
     /// confirmation of the creation.
     pub async fn create<K>(&self, spec: &str) -> Result<K>
     where
-        K: k8s_openapi::Resource + Clone + DeserializeOwned + Meta + Serialize,
+        K: Clone + DeserializeOwned + Meta + Serialize,
     {
         let timeout_secs = 10;
         let api: Api<K> = Api::namespaced(self.client.clone(), &self.namespace);
@@ -234,10 +246,10 @@ impl KubeClient {
         let resource = from_yaml(spec);
         api.create(&PostParams::default(), &resource).await?;
 
-        let lp = ListParams::default()
+        let list_params = ListParams::default()
             .fields(&format!("metadata.name={}", resource.name()))
             .timeout(timeout_secs);
-        let mut stream = api.watch(&lp, "0").await?.boxed();
+        let mut stream = api.watch(&list_params, "0").await?.boxed();
 
         while let Some(status) = stream.try_next().await? {
             if let WatchEvent::Added(resource) = status {
@@ -245,7 +257,7 @@ impl KubeClient {
             }
         }
 
-        Err(anyhow::anyhow!(
+        Err(anyhow!(
             "Resource [{}] could not be created within {} seconds.",
             resource.name(),
             timeout_secs
@@ -255,7 +267,7 @@ impl KubeClient {
     /// Deletes the given resource and awaits the confirmation of the deletion.
     pub async fn delete<K>(&self, resource: K) -> Result<()>
     where
-        K: k8s_openapi::Resource + Clone + DeserializeOwned + Meta,
+        K: Clone + DeserializeOwned + Meta,
     {
         let timeout_secs = 10;
         let api: Api<K> = Api::namespaced(self.client.clone(), &self.namespace);
@@ -268,10 +280,10 @@ impl KubeClient {
             return Ok(());
         }
 
-        let lp = ListParams::default()
+        let list_params = ListParams::default()
             .fields(&format!("metadata.name={}", resource.name()))
             .timeout(timeout_secs);
-        let mut stream = api.watch(&lp, "0").await?.boxed();
+        let mut stream = api.watch(&list_params, "0").await?.boxed();
 
         while let Some(status) = stream.try_next().await? {
             if let WatchEvent::Deleted(_) = status {
@@ -279,7 +291,7 @@ impl KubeClient {
             }
         }
 
-        Err(anyhow::anyhow!(
+        Err(anyhow!(
             "Resource [{}] could not be deleted within {} seconds.",
             resource.name(),
             timeout_secs
@@ -287,11 +299,7 @@ impl KubeClient {
     }
 
     /// Verifies that the given pod condition becomes true within 30 seconds.
-    pub async fn verify_pod_condition(
-        &self,
-        pod: &Pod,
-        condition_type: &str,
-    ) -> anyhow::Result<()> {
+    pub async fn verify_pod_condition(&self, pod: &Pod, condition_type: &str) -> Result<()> {
         let is_condition_true = |pod: &Pod| {
             get_pod_conditions(pod)
                 .iter()
@@ -318,11 +326,30 @@ impl KubeClient {
             }
         }
 
-        Err(anyhow::anyhow!(
+        Err(anyhow!(
             "Pod condition [{}] was not satisfied within {} seconds",
             condition_type,
             timeout_secs
         ))
+    }
+
+    /// Returns the logs for the given pod.
+    pub async fn get_logs(&self, pod: &Pod, params: &LogParams) -> Result<Vec<String>> {
+        let pods: Api<Pod> = Api::namespaced(self.client.clone(), &self.namespace);
+
+        let bytes = pods
+            .log_stream(&pod.name(), params)
+            .await?
+            .try_collect::<Vec<_>>()
+            .await?
+            .concat();
+
+        let lines = String::from_utf8_lossy(&bytes)
+            .lines()
+            .map(|line| line.to_owned())
+            .collect();
+
+        Ok(lines)
     }
 }
 
