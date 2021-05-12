@@ -7,4 +7,3 @@ pub use indoc::{formatdoc, indoc};
 pub use k8s_openapi::api::core::v1::{Node, Pod};
 pub use serde_json::json;
 pub use spectral::prelude::*;
-pub use uuid::Uuid;

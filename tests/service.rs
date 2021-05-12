@@ -9,7 +9,7 @@ fn service_should_be_started_successfully() {
 
     let pod = TemporaryResource::new(
         &client,
-        indoc! {"
+        &with_unique_name(indoc! {"
             apiVersion: v1
             kind: Pod
             metadata:
@@ -24,7 +24,7 @@ fn service_should_be_started_successfully() {
                 - key: kubernetes.io/arch
                   operator: Equal
                   value: stackable-linux
-        "},
+        "}),
     );
 
     client.verify_pod_condition(&pod, "Ready");
@@ -36,7 +36,7 @@ fn restart_after_ungraceful_shutdown_should_succeed() {
 
     setup_repository(&client);
 
-    let pod_spec = indoc! {"
+    let pod_spec = with_unique_name(indoc! {"
         apiVersion: v1
         kind: Pod
         metadata:
@@ -51,10 +51,10 @@ fn restart_after_ungraceful_shutdown_should_succeed() {
             - key: kubernetes.io/arch
               operator: Equal
               value: stackable-linux
-    "};
+    "});
 
     for _ in 1..=2 {
-        let pod = TemporaryResource::new(&client, pod_spec);
+        let pod = TemporaryResource::new(&client, &pod_spec);
         client.verify_pod_condition(&pod, "Ready");
     }
 }

@@ -16,6 +16,7 @@ use serde::de::DeserializeOwned;
 use serde::Serialize;
 use serde_json::Value;
 use tokio::runtime::Runtime;
+use uuid::Uuid;
 
 pub use kube::api::LogParams;
 
@@ -362,11 +363,24 @@ where
 }
 
 /// Deserializes the given YAML text into the desired type.
-pub fn from_yaml<T>(str: &str) -> T
+pub fn from_yaml<T>(yaml: &str) -> T
 where
     T: DeserializeOwned,
 {
-    serde_yaml::from_str(str).expect("String is not a well-formed YAML")
+    serde_yaml::from_str(yaml).expect("String is not a well-formed YAML")
+}
+
+/// Appends a UUID to `metadata/name`.
+pub fn with_unique_name(yaml: &str) -> String {
+    let mut spec: serde_yaml::Value = from_yaml(yaml);
+    let name = &mut spec["metadata"]["name"];
+    *name = format!(
+        "{}-{}",
+        name.as_str().expect("metadata/name is invalid"),
+        Uuid::new_v4()
+    )
+    .into();
+    serde_yaml::to_string(&spec).unwrap()
 }
 
 /// Returns the conditions of the given node.
