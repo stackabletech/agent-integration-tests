@@ -18,7 +18,7 @@ jobs:
           rm -rf *
           rm -rf .git*
 
-      - uses: actions/checkout@v2
+      - uses: actions/checkout@v2.3.4
 
       - name: Assure that Python3 is available
         run: |
