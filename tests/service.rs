@@ -44,13 +44,14 @@ fn restart_after_ungraceful_shutdown_should_succeed() {
         spec:
           containers:
             - name: nostop-service
-              image: nostop-service:1.0.0
+              image: nostop-service:1.0.1
               command:
-                - nostop-service-1.0.0/start.sh
+                - nostop-service-1.0.1/start.sh
           tolerations:
             - key: kubernetes.io/arch
               operator: Equal
               value: stackable-linux
+          terminationGracePeriodSeconds: 2
     "});
 
     for _ in 1..=2 {
