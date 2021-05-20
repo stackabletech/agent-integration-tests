@@ -1,4 +1,5 @@
 mod test;
+use std::time::Duration;
 use test::prelude::*;
 
 #[test]
@@ -32,11 +33,17 @@ fn service_should_be_started_successfully() {
 
 #[test]
 fn restart_after_ungraceful_shutdown_should_succeed() {
-    let client = TestKubeClient::new();
+    // must be greater than the period between the deletion of the pod
+    // and the creation of the new systemd service
+    let termination_grace_period = Duration::from_secs(5);
+
+    let mut client = TestKubeClient::new();
+    // delete must await the end of the termination grace period
+    client.timeouts().delete += termination_grace_period;
 
     setup_repository(&client);
 
-    let pod_spec = with_unique_name(indoc! {"
+    let pod_spec = with_unique_name(&formatdoc! {"
         apiVersion: v1
         kind: Pod
         metadata:
@@ -51,8 +58,8 @@ fn restart_after_ungraceful_shutdown_should_succeed() {
             - key: kubernetes.io/arch
               operator: Equal
               value: stackable-linux
-          terminationGracePeriodSeconds: 2
-    "});
+          terminationGracePeriodSeconds: {termination_grace_period_seconds}
+    ", termination_grace_period_seconds = termination_grace_period.as_secs()});
 
     for _ in 1..=2 {
         let pod = TemporaryResource::new(&client, &pod_spec);
