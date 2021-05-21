@@ -333,10 +333,6 @@ impl KubeClient {
                 .any(|condition| condition.type_ == condition_type && condition.status == "True")
         };
 
-        if is_condition_true(&pod) {
-            return Ok(());
-        }
-
         let timeout_secs = self.timeouts.verify_pod_condition.as_secs() as u32;
         let pods: Api<Pod> = Api::namespaced(self.client.clone(), &self.namespace);
 
@@ -344,6 +340,12 @@ impl KubeClient {
             .fields(&format!("metadata.name={}", pod.name()))
             .timeout(timeout_secs);
         let mut stream = pods.watch(&lp, "0").await?.boxed();
+
+        let pod = pods.get_status(&pod.name()).await?;
+
+        if is_condition_true(&pod) {
+            return Ok(());
+        }
 
         while let Some(status) = stream.try_next().await? {
             if let WatchEvent::Modified(pod) = status {

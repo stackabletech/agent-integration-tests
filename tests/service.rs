@@ -66,3 +66,42 @@ fn restart_after_ungraceful_shutdown_should_succeed() {
         client.verify_pod_condition(&pod, "Ready");
     }
 }
+
+// This test provokes race conditions but does not guarantee their
+// absence on success.
+#[test]
+fn no_race_conditions_should_occur_if_many_pods_are_started_and_stopped_in_parallel() {
+    let mut client = TestKubeClient::new();
+    client.timeouts().verify_pod_condition = Duration::from_secs(120);
+
+    setup_repository(&client);
+
+    let pod_spec = indoc! {"
+        apiVersion: v1
+        kind: Pod
+        metadata:
+          name: agent-service-integration-test-race-condition
+        spec:
+          containers:
+            - name: noop-service
+              image: noop-service:1.0.0
+              command:
+                - noop-service-1.0.0/start.sh
+          tolerations:
+            - key: kubernetes.io/arch
+              operator: Equal
+              value: stackable-linux
+    "};
+
+    let mut pods = Vec::new();
+
+    for _ in 1..=100 {
+        pods.push(TemporaryResource::new(&client, &with_unique_name(pod_spec)));
+    }
+
+    for pod in &pods {
+        client.verify_pod_condition(&pod, "Ready");
+    }
+
+    pods.clear();
+}
