@@ -21,11 +21,11 @@ impl<'a> EchoService<'a> {
 
         let pod = TemporaryResource::new(
             &client,
-            &formatdoc! {r#"
+            &with_unique_name(&formatdoc! {r#"
                 apiVersion: v1
                 kind: Pod
                 metadata:
-                  name: agent-logs-integration-test-{id}
+                  name: agent-logs-integration-test-logs
                 spec:
                   containers:
                     - name: echo-service
@@ -40,9 +40,8 @@ impl<'a> EchoService<'a> {
                       operator: Equal
                       value: stackable-linux
                 "#,
-                id = Uuid::new_v4(),
                 log_output = log_output.join(NEWLINE)
-            },
+            }),
         );
 
         client.verify_pod_condition(&pod, "Ready");

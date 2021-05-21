@@ -15,7 +15,9 @@ use kube::Client;
 use serde::de::DeserializeOwned;
 use serde::Serialize;
 use serde_json::Value;
+use std::time::Duration;
 use tokio::runtime::Runtime;
+use uuid::Uuid;
 
 pub use kube::api::LogParams;
 
@@ -42,6 +44,10 @@ impl TestKubeClient {
             runtime,
             kube_client,
         }
+    }
+
+    pub fn timeouts(&mut self) -> &mut Timeouts {
+        &mut self.kube_client.timeouts
     }
 
     /// Gets a list of resources restricted by the label selector.
@@ -147,6 +153,26 @@ impl TestKubeClient {
 pub struct KubeClient {
     client: Client,
     namespace: String,
+    pub timeouts: Timeouts,
+}
+
+/// Timeouts for operations
+pub struct Timeouts {
+    pub apply_crd: Duration,
+    pub create: Duration,
+    pub delete: Duration,
+    pub verify_pod_condition: Duration,
+}
+
+impl Default for Timeouts {
+    fn default() -> Self {
+        Timeouts {
+            apply_crd: Duration::from_secs(30),
+            create: Duration::from_secs(10),
+            delete: Duration::from_secs(10),
+            verify_pod_condition: Duration::from_secs(30),
+        }
+    }
 }
 
 impl KubeClient {
@@ -156,6 +182,7 @@ impl KubeClient {
         Ok(KubeClient {
             client,
             namespace: String::from("default"),
+            timeouts: Default::default(),
         })
     }
 
@@ -180,7 +207,7 @@ impl KubeClient {
                 .any(|condition| condition.type_ == "NamesAccepted" && condition.status == "True")
         };
 
-        let timeout_secs = 30;
+        let timeout_secs = self.timeouts.apply_crd.as_secs() as u32;
         let crds: Api<CustomResourceDefinition> = Api::all(self.client.clone());
 
         let apply_params = PatchParams::apply("agent_integration_test").force();
@@ -240,7 +267,7 @@ impl KubeClient {
     where
         K: Clone + DeserializeOwned + Meta + Serialize,
     {
-        let timeout_secs = 10;
+        let timeout_secs = self.timeouts.create.as_secs() as u32;
         let api: Api<K> = Api::namespaced(self.client.clone(), &self.namespace);
 
         let resource = from_yaml(spec);
@@ -269,7 +296,7 @@ impl KubeClient {
     where
         K: Clone + DeserializeOwned + Meta,
     {
-        let timeout_secs = 10;
+        let timeout_secs = self.timeouts.delete.as_secs() as u32;
         let api: Api<K> = Api::namespaced(self.client.clone(), &self.namespace);
 
         let result = api
@@ -310,7 +337,7 @@ impl KubeClient {
             return Ok(());
         }
 
-        let timeout_secs = 30;
+        let timeout_secs = self.timeouts.verify_pod_condition.as_secs() as u32;
         let pods: Api<Pod> = Api::namespaced(self.client.clone(), &self.namespace);
 
         let lp = ListParams::default()
@@ -362,11 +389,24 @@ where
 }
 
 /// Deserializes the given YAML text into the desired type.
-pub fn from_yaml<T>(str: &str) -> T
+pub fn from_yaml<T>(yaml: &str) -> T
 where
     T: DeserializeOwned,
 {
-    serde_yaml::from_str(str).expect("String is not a well-formed YAML")
+    serde_yaml::from_str(yaml).expect("String is not a well-formed YAML")
+}
+
+/// Appends a UUID to `metadata/name`.
+pub fn with_unique_name(yaml: &str) -> String {
+    let mut spec: serde_yaml::Value = from_yaml(yaml);
+    let name = &mut spec["metadata"]["name"];
+    *name = format!(
+        "{}-{}",
+        name.as_str().expect("metadata/name is invalid"),
+        Uuid::new_v4()
+    )
+    .into();
+    serde_yaml::to_string(&spec).unwrap()
 }
 
 /// Returns the conditions of the given node.
