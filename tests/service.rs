@@ -76,6 +76,24 @@ fn no_race_conditions_should_occur_if_many_pods_are_started_and_stopped_in_paral
 
     setup_repository(&client);
 
+    const NUM_PODS: u32 = 100;
+
+    let max_pods = client
+        .list_labeled::<Node>("kubernetes.io/arch=stackable-linux")
+        .iter()
+        .filter_map(|node| node.status.as_ref())
+        .filter_map(|status| status.allocatable.as_ref())
+        .filter_map(|allocatable| allocatable.get("pods"))
+        .filter_map(|allocatable_pods| allocatable_pods.0.parse::<u32>().ok())
+        .sum::<u32>();
+
+    assert!(
+        NUM_PODS <= max_pods,
+        "The test case tries to create {} pods but only {} pods are allocatable on the nodes.",
+        NUM_PODS,
+        max_pods
+    );
+
     let pod_spec = indoc! {"
         apiVersion: v1
         kind: Pod
@@ -95,7 +113,7 @@ fn no_race_conditions_should_occur_if_many_pods_are_started_and_stopped_in_paral
 
     let mut pods = Vec::new();
 
-    for _ in 1..=100 {
+    for _ in 1..=NUM_PODS {
         pods.push(TemporaryResource::new(&client, &with_unique_name(pod_spec)));
     }
 
