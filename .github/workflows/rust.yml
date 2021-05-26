@@ -24,7 +24,8 @@ jobs:
       - uses: Swatinem/rust-cache@v1.2.0
       - uses: actions-rs/cargo@v1.0.3
         with:
-          command: build --tests --verbose
+          command: build
+          args: --tests --verbose
       - uses: actions-rs/cargo@v1.0.3
         with:
           command: clean
