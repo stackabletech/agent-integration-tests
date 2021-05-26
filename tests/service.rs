@@ -1,5 +1,6 @@
 mod test;
-use std::time::Duration;
+use futures::future::join_all;
+use std::{fmt, time::Duration};
 use test::prelude::*;
 
 #[test]
@@ -67,25 +68,28 @@ fn restart_after_ungraceful_shutdown_should_succeed() {
     }
 }
 
-// This test provokes race conditions but does not guarantee their
-// absence on success.
-#[test]
-fn no_race_conditions_should_occur_if_many_pods_are_started_and_stopped_in_parallel() {
-    let mut client = TestKubeClient::new();
-    client.timeouts().verify_pod_condition = Duration::from_secs(120);
+#[tokio::test(flavor = "multi_thread")]
+async fn starting_and_stopping_100_pods_simultaneously_should_succeed() {
+    let mut client = KubeClient::new()
+        .await
+        .expect("Kubernetes client could not be created");
+    client.timeouts.create = Duration::from_secs(60);
+    client.timeouts.delete = Duration::from_secs(60);
+    client.timeouts.verify_pod_condition = Duration::from_secs(60);
 
-    setup_repository(&client);
+    setup_repository_async(&client)
+        .await
+        .expect("Repository could not be setup.");
 
     const NUM_PODS: u32 = 100;
 
     let max_pods = client
         .list_labeled::<Node>("kubernetes.io/arch=stackable-linux")
+        .await
+        .expect("List of Stackable nodes could not be retrieved")
         .iter()
-        .filter_map(|node| node.status.as_ref())
-        .filter_map(|status| status.allocatable.as_ref())
-        .filter_map(|allocatable| allocatable.get("pods"))
-        .filter_map(|allocatable_pods| allocatable_pods.0.parse::<u32>().ok())
-        .sum::<u32>();
+        .map(get_allocatable_pods)
+        .sum();
 
     assert!(
         NUM_PODS <= max_pods,
@@ -111,15 +115,52 @@ fn no_race_conditions_should_occur_if_many_pods_are_started_and_stopped_in_paral
               value: stackable-linux
     "};
 
-    let mut pods = Vec::new();
+    let pod_specs = (0..NUM_PODS)
+        .map(|_| with_unique_name(pod_spec))
+        .collect::<Vec<_>>();
 
-    for _ in 1..=NUM_PODS {
-        pods.push(TemporaryResource::new(&client, &with_unique_name(pod_spec)));
+    let (pods, creation_errors) =
+        partition_results(join_all(pod_specs.iter().map(|spec| client.create::<Pod>(spec))).await);
+    let pods_created = pods.len();
+
+    let (ready_successes, ready_errors) = partition_results(
+        join_all(
+            pods.iter()
+                .map(|pod| client.verify_pod_condition(pod, "Ready")),
+        )
+        .await,
+    );
+    let pods_ready = ready_successes.len();
+
+    let (deletion_successes, deletion_errors) =
+        partition_results(join_all(pods.into_iter().map(|pod| client.delete(pod))).await);
+    let pods_deleted = deletion_successes.len();
+
+    let mut errors = Vec::new();
+    errors.extend(creation_errors);
+    errors.extend(ready_errors);
+    errors.extend(deletion_errors);
+
+    if let Some(error) = errors.first() {
+        panic!(
+            "Pods: {created}/{total} created, {ready}/{created} ready, {deleted}/{created} deleted; Error: {error}",
+            total = NUM_PODS,
+            created = pods_created,
+            ready = pods_ready,
+            deleted = pods_deleted,
+            error = error
+        );
     }
+}
 
-    for pod in &pods {
-        client.verify_pod_condition(&pod, "Ready");
-    }
+fn partition_results<T, E>(results: Vec<Result<T, E>>) -> (Vec<T>, Vec<E>)
+where
+    E: fmt::Debug,
+    T: fmt::Debug,
+{
+    let (successes, errors) = results.into_iter().partition::<Vec<_>, _>(Result::is_ok);
+    let unwrapped_successes = successes.into_iter().map(Result::unwrap).collect();
+    let unwrapped_errors = errors.into_iter().map(Result::unwrap_err).collect();
 
-    pods.clear();
+    (unwrapped_successes, unwrapped_errors)
 }

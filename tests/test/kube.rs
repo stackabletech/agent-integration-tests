@@ -444,3 +444,13 @@ pub fn get_node_taints(node: &Node) -> Vec<Taint> {
         .and_then(|spec| spec.taints.clone())
         .unwrap_or_else(Vec::new)
 }
+
+/// Returns the number of allocatable pods of the given node.
+pub fn get_allocatable_pods(node: &Node) -> u32 {
+    node.status
+        .as_ref()
+        .and_then(|status| status.allocatable.as_ref())
+        .and_then(|allocatable| allocatable.get("pods"))
+        .and_then(|allocatable_pods| allocatable_pods.0.parse().ok())
+        .unwrap_or_default()
+}
