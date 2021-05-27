@@ -83,40 +83,53 @@ async fn starting_and_stopping_100_pods_simultaneously_should_succeed() {
 
     const NUM_PODS: u32 = 100;
 
-    let max_pods = client
+    let node = client
         .list_labeled::<Node>("kubernetes.io/arch=stackable-linux")
         .await
         .expect("List of Stackable nodes could not be retrieved")
-        .iter()
-        .map(get_allocatable_pods)
-        .sum();
+        .into_iter()
+        .next()
+        .expect("No Stackable node found");
 
+    let node_name = node.metadata.name.clone().expect("Node has no name");
+
+    let allocatable_pods = get_allocatable_pods(&node);
+
+    // This assertion assumes that either the allocated pods are already
+    // subtracted from `allocatable_pods` (which is currently not the
+    // case) or that no other pods are started while testing.
     assert!(
-        NUM_PODS <= max_pods,
-        "The test case tries to create {} pods but only {} pods are allocatable on the nodes.",
-        NUM_PODS,
-        max_pods
+        NUM_PODS <= allocatable_pods,
+        "The test case tries to create {num} pods but only {max} pods \
+        are allocatable on the node {node_name}.",
+        num = NUM_PODS,
+        max = allocatable_pods,
+        node_name = node_name
     );
 
-    let pod_spec = indoc! {"
-        apiVersion: v1
-        kind: Pod
-        metadata:
-          name: agent-service-integration-test-race-condition
-        spec:
-          containers:
-            - name: noop-service
-              image: noop-service:1.0.0
-              command:
-                - noop-service-1.0.0/start.sh
-          tolerations:
-            - key: kubernetes.io/arch
-              operator: Equal
-              value: stackable-linux
-    "};
+    let pod_spec = format!(
+        "
+            apiVersion: v1
+            kind: Pod
+            metadata:
+              name: agent-service-integration-test-race-condition
+            spec:
+              containers:
+                - name: noop-service
+                  image: noop-service:1.0.0
+                  command:
+                    - noop-service-1.0.0/start.sh
+              tolerations:
+                - key: kubernetes.io/arch
+                  operator: Equal
+                  value: stackable-linux
+              nodeName: {node_name}
+        ",
+        node_name = node_name
+    );
 
     let pod_specs = (0..NUM_PODS)
-        .map(|_| with_unique_name(pod_spec))
+        .map(|_| with_unique_name(&pod_spec))
         .collect::<Vec<_>>();
 
     let (pods, creation_errors) =
