@@ -15,9 +15,9 @@ kube = "0.51"
 kube-derive = "0.51"
 kube-runtime = "0.51"
 schemars = "0.8"
-serde = "1"
-serde_json = "1"
+serde = "1.0"
+serde_json = "1.0"
 serde_yaml = "0.8"
 spectral = "0.6"
-tokio = { version = "1", features = ["rt-multi-thread"] }
+tokio = { version = "1.6", features = ["rt-multi-thread"] }
 uuid = { version = "0.8", features = ["v4"] }
