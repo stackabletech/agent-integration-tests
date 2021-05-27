@@ -1,6 +1,6 @@
 pub use super::assertions::*;
 pub use super::kube::*;
-pub use super::repository::setup_repository;
+pub use super::repository::*;
 pub use super::temporary_resource::TemporaryResource;
 
 pub use indoc::{formatdoc, indoc};
