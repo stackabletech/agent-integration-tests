@@ -333,10 +333,6 @@ impl KubeClient {
                 .any(|condition| condition.type_ == condition_type && condition.status == "True")
         };
 
-        if is_condition_true(&pod) {
-            return Ok(());
-        }
-
         let timeout_secs = self.timeouts.verify_pod_condition.as_secs() as u32;
         let pods: Api<Pod> = Api::namespaced(self.client.clone(), &self.namespace);
 
@@ -344,6 +340,12 @@ impl KubeClient {
             .fields(&format!("metadata.name={}", pod.name()))
             .timeout(timeout_secs);
         let mut stream = pods.watch(&lp, "0").await?.boxed();
+
+        let pod = pods.get_status(&pod.name()).await?;
+
+        if is_condition_true(&pod) {
+            return Ok(());
+        }
 
         while let Some(status) = stream.try_next().await? {
             if let WatchEvent::Modified(pod) = status {
@@ -441,4 +443,14 @@ pub fn get_node_taints(node: &Node) -> Vec<Taint> {
         .as_ref()
         .and_then(|spec| spec.taints.clone())
         .unwrap_or_else(Vec::new)
+}
+
+/// Returns the number of allocatable pods of the given node.
+pub fn get_allocatable_pods(node: &Node) -> u32 {
+    node.status
+        .as_ref()
+        .and_then(|status| status.allocatable.as_ref())
+        .and_then(|allocatable| allocatable.get("pods"))
+        .and_then(|allocatable_pods| allocatable_pods.0.parse().ok())
+        .unwrap_or_default()
 }
