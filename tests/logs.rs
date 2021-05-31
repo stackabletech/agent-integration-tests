@@ -4,6 +4,7 @@ use test::prelude::*;
 struct EchoService<'a> {
     client: &'a TestKubeClient,
     pod: TemporaryResource<'a, Pod>,
+    pub logs_enabled: bool,
 }
 
 impl<'a> EchoService<'a> {
@@ -44,9 +45,22 @@ impl<'a> EchoService<'a> {
             }),
         );
 
-        client.verify_pod_condition(&pod, "Ready");
+        const FEATURE_LOGS_KEY: &str = "featureLogs";
+        let inner_pod: &Pod = &pod;
+        let logs_enabled = match client.get_annotation(inner_pod, FEATURE_LOGS_KEY).as_ref() {
+            "true" => true,
+            "false" => false,
+            value => panic!(
+                "Unknown value [{}] for pod annotation [{}]",
+                value, FEATURE_LOGS_KEY,
+            ),
+        };
 
-        EchoService { client, pod }
+        EchoService {
+            client,
+            pod,
+            logs_enabled,
+        }
     }
 
     pub fn get_logs(&self, params: &LogParams) -> Vec<String> {
@@ -62,7 +76,12 @@ fn all_logs_should_be_retrievable() {
     let echo_service = EchoService::new(&client, &log_output);
 
     let logs = echo_service.get_logs(&LogParams::default());
-    assert_equals(&["line 1", "line 2", "line 3"], &logs);
+
+    if echo_service.logs_enabled {
+        assert_equals(&["line 1", "line 2", "line 3"], &logs);
+    } else {
+        assert_that(&logs).is_empty();
+    }
 }
 
 #[test]
@@ -80,28 +99,35 @@ fn the_tail_of_logs_should_be_retrievable() {
     let logs = echo_service.get_logs(&with_tail_lines(0));
     assert_that(&logs).is_empty();
 
-    let logs = echo_service.get_logs(&with_tail_lines(1));
-    assert_equals(&["line 3"], &logs);
+    if echo_service.logs_enabled {
+        let logs = echo_service.get_logs(&with_tail_lines(1));
+        assert_equals(&["line 3"], &logs);
 
-    let logs = echo_service.get_logs(&with_tail_lines(2));
-    assert_equals(&["line 2", "line 3"], &logs);
+        let logs = echo_service.get_logs(&with_tail_lines(2));
+        assert_equals(&["line 2", "line 3"], &logs);
 
-    let logs = echo_service.get_logs(&with_tail_lines(3));
-    assert_equals(&["line 1", "line 2", "line 3"], &logs);
+        let logs = echo_service.get_logs(&with_tail_lines(3));
+        assert_equals(&["line 1", "line 2", "line 3"], &logs);
 
-    let logs = echo_service.get_logs(&with_tail_lines(4));
-    assert_equals(&["line 1", "line 2", "line 3"], &logs);
+        let logs = echo_service.get_logs(&with_tail_lines(4));
+        assert_equals(&["line 1", "line 2", "line 3"], &logs);
+    }
 }
 
 #[test]
-fn non_ascii_characters_should_be_handled_correctly() {
+fn non_ascii_characters_should_be_handled_correctly_in_the_logs() {
     let client = TestKubeClient::new();
 
     let log_output = vec!["Spade: ♠", "Heart: ♥", "Diamond: ♦", "Club: ♣"];
     let echo_service = EchoService::new(&client, &log_output);
 
     let logs = echo_service.get_logs(&LogParams::default());
-    assert_equals(&["Spade: ♠", "Heart: ♥", "Diamond: ♦", "Club: ♣"], &logs);
+
+    if echo_service.logs_enabled {
+        assert_equals(&["Spade: ♠", "Heart: ♥", "Diamond: ♦", "Club: ♣"], &logs);
+    } else {
+        assert_that(&logs).is_empty();
+    }
 }
 
 fn assert_equals(expected: &[&str], actual: &[String]) {
