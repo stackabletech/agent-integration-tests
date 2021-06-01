@@ -45,14 +45,20 @@ impl<'a> EchoService<'a> {
             }),
         );
 
-        const FEATURE_LOGS_KEY: &str = "featureLogs";
-        let inner_pod: &Pod = &pod;
-        let logs_enabled = match client.get_annotation(inner_pod, FEATURE_LOGS_KEY).as_ref() {
+        client.verify_pod_condition(&pod, "Ready");
+
+        const ANNOTATION_KEY_FEATURE_LOGS: &str = "featureLogs";
+
+        let logs_enabled = match client
+            .get_annotation::<Pod>(&pod, ANNOTATION_KEY_FEATURE_LOGS)
+            .as_ref()
+        {
             "true" => true,
             "false" => false,
             value => panic!(
-                "Unknown value [{}] for pod annotation [{}]",
-                value, FEATURE_LOGS_KEY,
+                "Pod annotation [{}] contains unknown value [{}]; \
+                expected [true] or [false]",
+                ANNOTATION_KEY_FEATURE_LOGS, value,
             ),
         };
 
