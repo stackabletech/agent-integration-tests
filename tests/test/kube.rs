@@ -123,7 +123,8 @@ impl TestKubeClient {
                 .expect("Resource could not be deleted")
         })
     }
-    /// Returns the value of the annotation for the given resource.
+
+    /// Returns the value of an annotation for the given resource.
     pub fn get_annotation<K>(&self, resource: &K, key: &str) -> String
     where
         K: Clone + DeserializeOwned + Meta,
@@ -338,7 +339,7 @@ impl KubeClient {
         ))
     }
 
-    /// Returns the value of the annotation for the given resource.
+    /// Returns the value of an annotation for the given resource.
     pub async fn get_annotation<K>(&self, resource: &K, key: &str) -> Result<String>
     where
         K: Clone + DeserializeOwned + Meta,
