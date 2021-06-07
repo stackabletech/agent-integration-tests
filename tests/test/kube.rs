@@ -124,7 +124,20 @@ impl TestKubeClient {
         })
     }
 
-    /// Verifies that the given pod condition becomes true within 30 seconds.
+    /// Returns the value of an annotation for the given resource.
+    pub fn get_annotation<K>(&self, resource: &K, key: &str) -> String
+    where
+        K: Clone + DeserializeOwned + Meta,
+    {
+        self.runtime.block_on(async {
+            self.kube_client
+                .get_annotation(resource, key)
+                .await
+                .expect("Annotation could not be retrieved")
+        })
+    }
+
+    /// Verifies that the given pod condition becomes true within the specified timeout.
     pub fn verify_pod_condition(&self, pod: &Pod, condition_type: &str) {
         self.runtime.block_on(async {
             self.kube_client
@@ -161,6 +174,7 @@ pub struct Timeouts {
     pub apply_crd: Duration,
     pub create: Duration,
     pub delete: Duration,
+    pub get_annotation: Duration,
     pub verify_pod_condition: Duration,
 }
 
@@ -170,6 +184,7 @@ impl Default for Timeouts {
             apply_crd: Duration::from_secs(30),
             create: Duration::from_secs(10),
             delete: Duration::from_secs(10),
+            get_annotation: Duration::from_secs(10),
             verify_pod_condition: Duration::from_secs(30),
         }
     }
@@ -224,7 +239,6 @@ impl KubeClient {
         let mut stream = crds.watch(&lp, "0").await?.boxed();
 
         while let Some(status) = stream.try_next().await? {
-            println!("{:?}", status);
             if let WatchEvent::Modified(crd) = status {
                 if is_ready(&crd) {
                     return Ok(());
@@ -325,7 +339,48 @@ impl KubeClient {
         ))
     }
 
-    /// Verifies that the given pod condition becomes true within 30 seconds.
+    /// Returns the value of an annotation for the given resource.
+    pub async fn get_annotation<K>(&self, resource: &K, key: &str) -> Result<String>
+    where
+        K: Clone + DeserializeOwned + Meta,
+    {
+        let get_value = |resource: &K| {
+            resource
+                .meta()
+                .annotations
+                .as_ref()
+                .and_then(|annotations| annotations.get(key).cloned())
+        };
+
+        let timeout_secs = self.timeouts.get_annotation.as_secs() as u32;
+        let api: Api<K> = Api::namespaced(self.client.clone(), &self.namespace);
+
+        let lp = ListParams::default()
+            .fields(&format!("metadata.name={}", resource.name()))
+            .timeout(timeout_secs);
+        let mut stream = api.watch(&lp, "0").await?.boxed();
+
+        if let Some(value) = get_value(&resource) {
+            return Ok(value);
+        }
+
+        while let Some(event) = stream.try_next().await? {
+            if let WatchEvent::Added(resource) = event {
+                if let Some(value) = get_value(&resource) {
+                    return Ok(value);
+                }
+            }
+        }
+
+        Err(anyhow!(
+            "Annotation [{}] could not be retrieved from [{}] within {} seconds",
+            key,
+            resource.name(),
+            timeout_secs
+        ))
+    }
+
+    /// Verifies that the given pod condition becomes true within the specified timeout.
     pub async fn verify_pod_condition(&self, pod: &Pod, condition_type: &str) -> Result<()> {
         let is_condition_true = |pod: &Pod| {
             get_pod_conditions(pod)
