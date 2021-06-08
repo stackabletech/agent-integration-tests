@@ -7,17 +7,6 @@ name = "agent-integration-tests"
 version = "0.1.0"
 
 [dependencies]
-anyhow = "1.0"
+integration-test-commons = { git = "https://github.com/stackabletech/integration-test-commons.git", branch = "setup" }
 futures = "0.3"
-indoc = "1.0"
-k8s-openapi = { version = "0.11", default-features = false, features = ["v1_20"] }
-kube = "0.51"
-kube-derive = "0.51"
-kube-runtime = "0.51"
-schemars = "0.8"
-serde = "1.0"
-serde_json = "1.0"
-serde_yaml = "0.8"
-spectral = "0.6"
 tokio = { version = "1.6", features = ["macros", "rt-multi-thread"] }
-uuid = { version = "0.8", features = ["v4"] }

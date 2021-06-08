@@ -14,20 +14,9 @@ dependencies = [
 name = "agent-integration-tests"
 version = "0.1.0"
 dependencies = [
- "anyhow",
  "futures",
- "indoc",
- "k8s-openapi",
- "kube",
- "kube-derive",
- "kube-runtime",
- "schemars",
- "serde",
- "serde_json",
- "serde_yaml",
- "spectral",
+ "integration-test-commons",
  "tokio",
- "uuid",
 ]
 
 [[package]]
@@ -524,6 +513,27 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "e5a75aeaaef0ce18b58056d306c27b07436fbb34b8816c53094b76dd81803136"
 dependencies = [
  "unindent",
+]
+
+[[package]]
+name = "integration-test-commons"
+version = "0.1.0"
+source = "git+https://github.com/stackabletech/integration-test-commons.git?branch=setup#2046b911f3ca0f3b5e45f65609260de27eeef704"
+dependencies = [
+ "anyhow",
+ "futures",
+ "indoc",
+ "k8s-openapi",
+ "kube",
+ "kube-derive",
+ "kube-runtime",
+ "schemars",
+ "serde",
+ "serde_json",
+ "serde_yaml",
+ "spectral",
+ "tokio",
+ "uuid",
 ]
 
 [[package]]

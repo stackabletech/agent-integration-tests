@@ -1,7 +1,6 @@
-mod test;
 use futures::future::join_all;
+use integration_test_commons::test::prelude::*;
 use std::{fmt, time::Duration};
-use test::prelude::*;
 
 #[test]
 fn service_should_be_started_successfully() {
