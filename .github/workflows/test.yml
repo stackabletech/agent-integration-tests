@@ -9,7 +9,21 @@ jobs:
 
   integration_test:
 
-    runs-on: debian10
+    strategy:
+      matrix:
+        environment: [ centos-7, centos-8, debian-10 ]
+        include: 
+          - environment: centos-7
+            install_additional_build_packages: "yum install vim procps curl gcc make pkgconfig openssl-devel systemd-devel python3-pip container-selinux selinux-policy-base -y"
+            install_git: "yum install git -y"
+          - environment: centos-8
+            install_additional_build_packages: "yum install vim procps curl gcc make pkgconfig openssl-devel systemd-devel python3-pip container-selinux selinux-policy-base -y"
+            install_git: "yum install git -y"
+          - environment: debian-10
+            install_additional_build_packages: "apt-get install gcc libssl-dev pkg-config -y"
+            install_git: "apt-get install git -y"
+
+    runs-on: ubuntu-latest
 
     steps:
 
@@ -18,11 +32,15 @@ jobs:
           rm -rf *
           rm -rf .git*
 
-      - uses: actions/checkout@v2.3.4
+      - name: Install Python3
+        run: |
+          sudo apt install python3
 
       - name: Assure that Python3 is available
         run: |
           which python3
+
+      - uses: actions/checkout@v2.3.4
 
       - name: Download T2 cluster launch script
         run: |
@@ -32,20 +50,18 @@ jobs:
         env:
           T2_TOKEN: ${{ secrets.T2_TOKEN }}
         run: | 
-          python3 t2.py launch "$T2_TOKEN" https://t2.stackable.tech .github/workflows/resources/cluster-definition.yaml
+          python3 t2.py launch "$T2_TOKEN" https://t2.stackable.tech .github/workflows/resources/cluster-definition-${{matrix.environment}}.yaml
 
       - name: Test (step 1) - install Rust and required tools
         run: | 
           ./stackable.sh testdriver-1 -i ./.cluster/key "echo '13.32.25.75     static.rust-lang.org' >> /etc/hosts"
           ./stackable.sh testdriver-1 -i ./.cluster/key "curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y"
           ./stackable.sh testdriver-1 -i ./.cluster/key "cargo --version"
-          ./stackable.sh testdriver-1 -i ./.cluster/key "apt-get install gcc -y"
-          ./stackable.sh testdriver-1 -i ./.cluster/key "apt-get install libssl-dev -y"
-          ./stackable.sh testdriver-1 -i ./.cluster/key "apt-get install pkg-config -y"
+          ./stackable.sh testdriver-1 -i ./.cluster/key "${{matrix.install_additional_build_packages}}"
 
       - name: Test (step 2) - clone repository
         run: | 
-          ./stackable.sh testdriver-1 -i ./.cluster/key "apt-get install git -y"
+          ./stackable.sh testdriver-1 -i ./.cluster/key "${{matrix.install_git}}"
           ./stackable.sh testdriver-1 -i ./.cluster/key "git --version"
           ./stackable.sh testdriver-1 -i ./.cluster/key "git clone -b ${GITHUB_REF##*/} https://github.com/stackabletech/agent-integration-tests.git"
  
