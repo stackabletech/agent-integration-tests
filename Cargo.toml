@@ -7,6 +7,6 @@ name = "agent-integration-tests"
 version = "0.1.0"
 
 [dependencies]
-integration-test-commons = { git = "https://github.com/stackabletech/integration-test-commons.git", branch = "setup" }
+integration-test-commons = { git = "https://github.com/stackabletech/integration-test-commons.git", tag = "0.1.0" }
 futures = "0.3"
 tokio = { version = "1.6", features = ["macros", "rt-multi-thread"] }
