@@ -1,5 +1,4 @@
-mod test;
-use test::prelude::*;
+use integration_test_commons::test::prelude::*;
 
 struct EchoService<'a> {
     client: &'a TestKubeClient,
