@@ -1,5 +1,4 @@
-mod test;
-use test::prelude::*;
+use integration_test_commons::test::prelude::*;
 
 #[test]
 fn at_least_one_node_should_be_available() {
