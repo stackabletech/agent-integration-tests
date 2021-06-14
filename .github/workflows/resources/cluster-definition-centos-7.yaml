@@ -9,6 +9,7 @@ domain: stackable.test
 publicKeys: []
 spec:
   region: de/fra
+  wireguard: false
   versions:
     stackable-agent: "*0.nightly.el7"
   nodes:
