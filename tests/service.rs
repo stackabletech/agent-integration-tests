@@ -74,7 +74,7 @@ async fn starting_and_stopping_100_pods_simultaneously_should_succeed() {
         .expect("Kubernetes client could not be created");
     client.timeouts.create = Duration::from_secs(60);
     client.timeouts.delete = Duration::from_secs(60);
-    client.timeouts.verify_pod_condition = Duration::from_secs(60);
+    client.timeouts.verify_status = Duration::from_secs(60);
 
     setup_repository_async(&client)
         .await
