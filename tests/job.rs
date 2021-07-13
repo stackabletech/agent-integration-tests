@@ -67,8 +67,7 @@ impl<'a> ExitService<'a> {
     fn terminated_container_state_from(pod: &Pod) -> Option<ContainerStateTerminated> {
         pod.status
             .as_ref()
-            .and_then(|status| status.container_statuses.as_ref())
-            .and_then(|container_statuses| container_statuses.first().to_owned())
+            .and_then(|status| status.container_statuses.first())
             .and_then(|container_status| container_status.state.as_ref())
             .and_then(|state| state.terminated.to_owned())
     }
