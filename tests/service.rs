@@ -32,6 +32,48 @@ fn service_should_be_started_successfully() {
 }
 
 #[test]
+fn host_ip_and_node_ip_should_be_set() {
+    let client = TestKubeClient::new();
+
+    setup_repository(&client);
+
+    let pod = TemporaryResource::new(
+        &client,
+        &with_unique_name(indoc! {"
+            apiVersion: v1
+            kind: Pod
+            metadata:
+              name: agent-service-integration-test-ip
+            spec:
+              containers:
+                - name: noop-service
+                  image: noop-service:1.0.0
+                  command:
+                    - noop-service-1.0.0/start.sh
+              tolerations:
+                - key: kubernetes.io/arch
+                  operator: Equal
+                  value: stackable-linux
+        "}),
+    );
+
+    let are_host_ip_and_node_ip_set = |pod: &Pod| {
+        let host_ip = pod
+            .status
+            .as_ref()
+            .and_then(|status| status.host_ip.as_ref());
+        let pod_ip = pod
+            .status
+            .as_ref()
+            .and_then(|status| status.pod_ip.as_ref());
+
+        host_ip.is_some() && pod_ip.is_some() && host_ip == pod_ip
+    };
+
+    client.verify_status::<Pod, _>(&pod, are_host_ip_and_node_ip_set);
+}
+
+#[test]
 fn restart_after_ungraceful_shutdown_should_succeed() {
     // must be greater than the period between the deletion of the pod
     // and the creation of the new systemd service
