@@ -21,6 +21,8 @@ fn service_should_be_started_successfully() {
                   image: noop-service:1.0.0
                   command:
                     - noop-service-1.0.0/start.sh
+              nodeSelector:
+                kubernetes.io/arch: stackable-linux
               tolerations:
                 - key: kubernetes.io/arch
                   operator: Equal
@@ -50,6 +52,8 @@ fn host_ip_and_node_ip_should_be_set() {
                   image: noop-service:1.0.0
                   command:
                     - noop-service-1.0.0/start.sh
+              nodeSelector:
+                kubernetes.io/arch: stackable-linux
               tolerations:
                 - key: kubernetes.io/arch
                   operator: Equal
@@ -96,6 +100,8 @@ fn restart_after_ungraceful_shutdown_should_succeed() {
               image: nostop-service:1.0.1
               command:
                 - nostop-service-1.0.1/start.sh
+          nodeSelector:
+            kubernetes.io/arch: stackable-linux
           tolerations:
             - key: kubernetes.io/arch
               operator: Equal
@@ -160,6 +166,8 @@ async fn starting_and_stopping_100_pods_simultaneously_should_succeed() {
                   image: noop-service:1.0.0
                   command:
                     - noop-service-1.0.0/start.sh
+              nodeSelector:
+                kubernetes.io/arch: stackable-linux
               tolerations:
                 - key: kubernetes.io/arch
                   operator: Equal

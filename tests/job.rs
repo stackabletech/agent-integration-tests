@@ -27,6 +27,8 @@ impl<'a> ExitService<'a> {
                         - name: EXIT_CODE
                           value: {exit_code}
                   restartPolicy: Never
+                  nodeSelector:
+                    kubernetes.io/arch: stackable-linux
                   tolerations:
                     - key: kubernetes.io/arch
                       operator: Equal

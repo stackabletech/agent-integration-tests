@@ -35,6 +35,8 @@ impl<'a> EchoService<'a> {
                       env:
                         - name: LOG_OUTPUT
                           value: "{log_output}"
+                  nodeSelector:
+                    kubernetes.io/arch: stackable-linux
                   tolerations:
                     - key: kubernetes.io/arch
                       operator: Equal
