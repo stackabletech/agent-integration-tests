@@ -10,7 +10,8 @@ fn service_should_be_started_successfully() {
 
     let pod = TemporaryResource::new(
         &client,
-        &with_unique_name(indoc! {"
+        &with_unique_name(indoc!(
+            "
             apiVersion: v1
             kind: Pod
             metadata:
@@ -27,7 +28,8 @@ fn service_should_be_started_successfully() {
                 - key: kubernetes.io/arch
                   operator: Equal
                   value: stackable-linux
-        "}),
+            "
+        )),
     );
 
     client.verify_pod_condition(&pod, "Ready");
@@ -41,7 +43,8 @@ fn host_ip_and_node_ip_should_be_set() {
 
     let pod = TemporaryResource::new(
         &client,
-        &with_unique_name(indoc! {"
+        &with_unique_name(indoc!(
+            "
             apiVersion: v1
             kind: Pod
             metadata:
@@ -58,7 +61,8 @@ fn host_ip_and_node_ip_should_be_set() {
                 - key: kubernetes.io/arch
                   operator: Equal
                   value: stackable-linux
-        "}),
+            "
+        )),
     );
 
     let are_host_ip_and_node_ip_set = |pod: &Pod| {
@@ -89,7 +93,8 @@ fn restart_after_ungraceful_shutdown_should_succeed() {
 
     setup_repository(&client);
 
-    let pod_spec = with_unique_name(&formatdoc! {"
+    let pod_spec = with_unique_name(&formatdoc!(
+        "
         apiVersion: v1
         kind: Pod
         metadata:
@@ -107,7 +112,9 @@ fn restart_after_ungraceful_shutdown_should_succeed() {
               operator: Equal
               value: stackable-linux
           terminationGracePeriodSeconds: {termination_grace_period_seconds}
-    ", termination_grace_period_seconds = termination_grace_period.as_secs()});
+        ",
+        termination_grace_period_seconds = termination_grace_period.as_secs()
+    ));
 
     for _ in 1..=2 {
         let pod = TemporaryResource::new(&client, &pod_spec);
@@ -154,25 +161,25 @@ async fn starting_and_stopping_100_pods_simultaneously_should_succeed() {
         node_name = node_name
     );
 
-    let pod_spec = format!(
+    let pod_spec = formatdoc!(
         "
-            apiVersion: v1
-            kind: Pod
-            metadata:
-              name: agent-service-integration-test-race-condition
-            spec:
-              containers:
-                - name: noop-service
-                  image: noop-service:1.0.0
-                  command:
-                    - noop-service-1.0.0/start.sh
-              nodeSelector:
-                kubernetes.io/arch: stackable-linux
-              tolerations:
-                - key: kubernetes.io/arch
-                  operator: Equal
-                  value: stackable-linux
-              nodeName: {node_name}
+        apiVersion: v1
+        kind: Pod
+        metadata:
+          name: agent-service-integration-test-race-condition
+        spec:
+          containers:
+            - name: noop-service
+              image: noop-service:1.0.0
+              command:
+                - noop-service-1.0.0/start.sh
+          nodeSelector:
+            kubernetes.io/arch: stackable-linux
+          tolerations:
+            - key: kubernetes.io/arch
+              operator: Equal
+              value: stackable-linux
+          nodeName: {node_name}
         ",
         node_name = node_name
     );

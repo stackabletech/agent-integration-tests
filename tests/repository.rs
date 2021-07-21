@@ -23,35 +23,35 @@ async fn invalid_or_unreachable_repositories_should_be_ignored() -> Result<()> {
     // alphabetical order.
 
     let repository0_result = client
-        .create::<Repository>(
+        .create::<Repository>(indoc!(
             "
-                apiVersion: stable.stackable.de/v1
-                kind: Repository
-                metadata:
-                    name: 0-no-repository-url
-                    namespace: default
-                spec:
-                    repo_type: StackableRepo
-                    properties: {}
-            ",
-        )
+            apiVersion: stable.stackable.de/v1
+            kind: Repository
+            metadata:
+                name: 0-no-repository-url
+                namespace: default
+            spec:
+                repo_type: StackableRepo
+                properties: {}
+            "
+        ))
         .await;
     combine(&mut result, &repository0_result);
 
     let repository1_result = client
-        .create::<Repository>(
+        .create::<Repository>(indoc!(
             "
-                apiVersion: stable.stackable.de/v1
-                kind: Repository
-                metadata:
-                    name: 1-unreachable
-                    namespace: default
-                spec:
-                    repo_type: StackableRepo
-                    properties:
-                        url: https://unreachable
-            ",
-        )
+            apiVersion: stable.stackable.de/v1
+            kind: Repository
+            metadata:
+                name: 1-unreachable
+                namespace: default
+            spec:
+                repo_type: StackableRepo
+                properties:
+                    url: https://unreachable
+            "
+        ))
         .await;
     combine(&mut result, &repository1_result);
 

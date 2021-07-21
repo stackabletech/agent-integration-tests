@@ -1,7 +1,7 @@
 use anyhow::anyhow;
 use anyhow::Result;
 use http::Uri;
-use integration_test_commons::test::{prelude::KubeClient, repository::Repository};
+use integration_test_commons::test::prelude::*;
 use nix::ifaddrs;
 use nix::net::if_::InterfaceFlags;
 use nix::sys::socket::SockAddr;
@@ -196,7 +196,10 @@ fn default_ip_address() -> Result<IpAddr> {
             }
         })
         .ok_or_else(|| {
-            anyhow!("No network interface found which is up, bound to an IP address, and not the loopback interface")
+            anyhow!(
+                "No network interface found which is up, bound to an \
+                    IP address, and not the loopback interface"
+            )
         })
 }
 
@@ -213,7 +216,8 @@ async fn register(
         .build()
         .unwrap();
 
-    let spec = format! {"
+    let spec = formatdoc!(
+        "
         apiVersion: stable.stackable.de/v1
         kind: Repository
         metadata:
@@ -223,8 +227,10 @@ async fn register(
             repo_type: StackableRepo
             properties:
                 url: {}
-        ", repository_name, uri
-    };
+        ",
+        repository_name,
+        uri
+    );
 
     client.create::<Repository>(&spec).await
 }

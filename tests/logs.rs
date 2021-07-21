@@ -21,7 +21,8 @@ impl<'a> EchoService<'a> {
 
         let pod = TemporaryResource::new(
             &client,
-            &with_unique_name(&formatdoc! {r#"
+            &with_unique_name(&formatdoc!(
+                r#"
                 apiVersion: v1
                 kind: Pod
                 metadata:
@@ -43,7 +44,7 @@ impl<'a> EchoService<'a> {
                       value: stackable-linux
                 "#,
                 log_output = log_output.join(NEWLINE)
-            }),
+            )),
         );
 
         client.verify_pod_condition(&pod, "Ready");

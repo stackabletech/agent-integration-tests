@@ -45,22 +45,22 @@ impl TestPackage {
     pub fn pod_spec(&self, pod_name: &str) -> String {
         format!(
             "
-                apiVersion: v1
-                kind: Pod
-                metadata:
-                  name: {pod_name}
-                spec:
-                  containers:
-                    - name: {package_name}
-                      image: {package_name}:{package_version}
-                      command:
-                        - {command}
-                  nodeSelector:
-                    kubernetes.io/arch: stackable-linux
-                  tolerations:
-                    - key: kubernetes.io/arch
-                      operator: Equal
-                      value: stackable-linux
+            apiVersion: v1
+            kind: Pod
+            metadata:
+              name: {pod_name}
+            spec:
+              containers:
+                - name: {package_name}
+                  image: {package_name}:{package_version}
+                  command:
+                    - {command}
+              nodeSelector:
+                kubernetes.io/arch: stackable-linux
+              tolerations:
+                - key: kubernetes.io/arch
+                  operator: Equal
+                  value: stackable-linux
             ",
             pod_name = pod_name,
             package_name = self.name,

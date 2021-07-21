@@ -31,7 +31,8 @@ pub fn echo_service() -> TestPackage {
     TestPackage {
         name: String::from("echo-service"),
         version: String::from("1.0.0"),
-        script: String::from(indoc! {r#"
+        script: String::from(indoc!(
+            r#"
             #!/bin/sh
 
             # Adding /run/current-system/sw/bin to PATH for NixOS support
@@ -40,8 +41,8 @@ pub fn echo_service() -> TestPackage {
             printf '%b\n' "$LOG_OUTPUT"
 
             sleep 1d
-        "#,
-        }),
+            "#,
+        )),
     }
 }
 
@@ -53,11 +54,13 @@ pub fn exit_service() -> TestPackage {
     TestPackage {
         name: String::from("exit-service"),
         version: String::from("1.0.0"),
-        script: String::from(indoc! {"
+        script: String::from(indoc!(
+            "
             #!/bin/sh
 
             exit ${EXIT_CODE:-0}
-        "}),
+            "
+        )),
     }
 }
 
@@ -67,7 +70,8 @@ pub fn noop_service() -> TestPackage {
     TestPackage {
         name: String::from("noop-service"),
         version: String::from("1.0.0"),
-        script: String::from(indoc! {"
+        script: String::from(indoc!(
+            "
             #!/bin/sh
 
             # Adding /run/current-system/sw/bin to PATH for NixOS support
@@ -76,7 +80,8 @@ pub fn noop_service() -> TestPackage {
             echo test-service started
 
             sleep 1d
-        "}),
+            "
+        )),
     }
 }
 
@@ -89,7 +94,8 @@ pub fn nostop_service() -> TestPackage {
     TestPackage {
         name: String::from("nostop-service"),
         version: String::from("1.0.1"),
-        script: String::from(indoc! {"
+        script: String::from(indoc!(
+            "
             #!/bin/sh
 
             # Adding /run/current-system/sw/bin to PATH for NixOS support
@@ -99,6 +105,7 @@ pub fn nostop_service() -> TestPackage {
 
             trap '' INT TERM
             sleep 1d
-        "}),
+            "
+        )),
     }
 }

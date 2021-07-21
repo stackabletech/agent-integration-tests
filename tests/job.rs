@@ -11,7 +11,7 @@ impl<'a> ExitService<'a> {
 
         let pod = TemporaryResource::new(
             &client,
-            &with_unique_name(&format!(
+            &with_unique_name(&formatdoc!(
                 "
                 apiVersion: v1
                 kind: Pod
