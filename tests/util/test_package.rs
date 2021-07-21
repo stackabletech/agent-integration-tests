@@ -16,7 +16,7 @@ impl TestPackage {
 
         let mut header = tar::Header::new_gnu();
         header.set_size(self.script.len() as u64);
-        header.set_mode(0x755);
+        header.set_mode(0o755);
         header.set_cksum();
 
         tar.append_data(&mut header, self.command(), self.script.as_bytes())
