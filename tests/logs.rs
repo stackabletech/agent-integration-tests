@@ -21,7 +21,8 @@ impl<'a> EchoService<'a> {
 
         let pod = TemporaryResource::new(
             &client,
-            &with_unique_name(&formatdoc! {r#"
+            &with_unique_name(&formatdoc!(
+                r#"
                 apiVersion: v1
                 kind: Pod
                 metadata:
@@ -35,13 +36,15 @@ impl<'a> EchoService<'a> {
                       env:
                         - name: LOG_OUTPUT
                           value: "{log_output}"
+                  nodeSelector:
+                    kubernetes.io/arch: stackable-linux
                   tolerations:
                     - key: kubernetes.io/arch
                       operator: Equal
                       value: stackable-linux
                 "#,
                 log_output = log_output.join(NEWLINE)
-            }),
+            )),
         );
 
         client.verify_pod_condition(&pod, "Ready");

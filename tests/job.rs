@@ -11,7 +11,7 @@ impl<'a> ExitService<'a> {
 
         let pod = TemporaryResource::new(
             &client,
-            &with_unique_name(&format!(
+            &with_unique_name(&formatdoc!(
                 "
                 apiVersion: v1
                 kind: Pod
@@ -27,6 +27,8 @@ impl<'a> ExitService<'a> {
                         - name: EXIT_CODE
                           value: {exit_code}
                   restartPolicy: Never
+                  nodeSelector:
+                    kubernetes.io/arch: stackable-linux
                   tolerations:
                     - key: kubernetes.io/arch
                       operator: Equal
