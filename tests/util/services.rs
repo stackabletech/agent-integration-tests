@@ -31,6 +31,7 @@ pub fn echo_service() -> TestPackage {
     TestPackage {
         name: String::from("echo-service"),
         version: String::from("1.0.0"),
+        job: false,
         script: String::from(indoc!(
             r#"
             #!/bin/sh
@@ -54,6 +55,7 @@ pub fn exit_service() -> TestPackage {
     TestPackage {
         name: String::from("exit-service"),
         version: String::from("1.0.0"),
+        job: true,
         script: String::from(indoc!(
             "
             #!/bin/sh
@@ -70,6 +72,7 @@ pub fn noop_service() -> TestPackage {
     TestPackage {
         name: String::from("noop-service"),
         version: String::from("1.0.0"),
+        job: false,
         script: String::from(indoc!(
             "
             #!/bin/sh
@@ -94,6 +97,7 @@ pub fn nostop_service() -> TestPackage {
     TestPackage {
         name: String::from("nostop-service"),
         version: String::from("1.0.1"),
+        job: false,
         script: String::from(indoc!(
             "
             #!/bin/sh

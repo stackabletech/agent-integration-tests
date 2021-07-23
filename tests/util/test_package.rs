@@ -5,6 +5,7 @@ use flate2::{write::GzEncoder, Compression};
 pub struct TestPackage {
     pub name: String,
     pub version: String,
+    pub job: bool,
     pub script: String,
 }
 
@@ -57,15 +58,17 @@ impl TestPackage {
                     - {command}
               nodeSelector:
                 kubernetes.io/arch: stackable-linux
+              restartPolicy: {restart_policy}
               tolerations:
                 - key: kubernetes.io/arch
                   operator: Equal
                   value: stackable-linux
             ",
-            pod_name = pod_name,
+            command = self.command(),
             package_name = self.name,
             package_version = self.version,
-            command = self.command()
+            pod_name = pod_name,
+            restart_policy = if self.job { "Never" } else { "Always" },
         )
     }
 }
