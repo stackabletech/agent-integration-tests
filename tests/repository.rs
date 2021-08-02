@@ -81,7 +81,7 @@ async fn invalid_or_unreachable_repositories_should_be_ignored() -> Result<()> {
     // Verify that the pod was downloaded, started, and is ready
 
     if let Ok(pod) = &pod_result {
-        let pod_ready = client.verify_pod_condition(&pod, "Ready").await;
+        let pod_ready = client.verify_pod_condition(pod, "Ready").await;
         result.combine(&pod_ready);
     }
 
