@@ -12,17 +12,21 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        environment: [ centos-7, centos-8, debian-10 ]
+        #environment: [ centos-7, centos-8, debian-10 ]
+        environment: [ aws-centos-8 ]
         include: 
-          - environment: centos-7
+#          - environment: centos-7
+#            install_additional_build_packages: "yum install vim procps curl gcc make pkgconfig openssl-devel systemd-devel python3-pip container-selinux selinux-policy-base -y"
+#            install_git: "yum install git -y"
+#          - environment: centos-8
+#            install_additional_build_packages: "yum install vim procps curl gcc make pkgconfig openssl-devel systemd-devel python3-pip container-selinux selinux-policy-base -y"
+#            install_git: "yum install git -y"
+#          - environment: debian-10
+#            install_additional_build_packages: "apt-get install gcc libssl-dev pkg-config -y"
+#            install_git: "apt-get install git -y"
+          - environment: aws-centos-8
             install_additional_build_packages: "yum install vim procps curl gcc make pkgconfig openssl-devel systemd-devel python3-pip container-selinux selinux-policy-base -y"
             install_git: "yum install git -y"
-          - environment: centos-8
-            install_additional_build_packages: "yum install vim procps curl gcc make pkgconfig openssl-devel systemd-devel python3-pip container-selinux selinux-policy-base -y"
-            install_git: "yum install git -y"
-          - environment: debian-10
-            install_additional_build_packages: "apt-get install gcc libssl-dev pkg-config -y"
-            install_git: "apt-get install git -y"
 
     runs-on: ubuntu-latest
 
