@@ -48,7 +48,7 @@ async fn kubeconfig_should_be_set() -> Result<()> {
 
     if let Ok(pod) = &pod_result {
         let job_result = client
-            .verify_status::<Pod, _>(&pod, |pod| {
+            .verify_status::<Pod, _>(pod, |pod| {
                 let phase = pod.status.as_ref().and_then(|status| status.phase.as_ref());
                 phase == Some(&String::from("Succeeded"))
             })
