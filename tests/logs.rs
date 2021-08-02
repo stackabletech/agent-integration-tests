@@ -8,7 +8,7 @@ struct EchoService<'a> {
 
 impl<'a> EchoService<'a> {
     pub fn new(client: &'a TestKubeClient, log_output: &[&str]) -> Self {
-        setup_repository(&client);
+        setup_repository(client);
 
         /// Newline character for LOG_OUTPUT
         ///
@@ -20,7 +20,7 @@ impl<'a> EchoService<'a> {
         const NEWLINE: &str = "\\\\\\\\n";
 
         let pod = TemporaryResource::new(
-            &client,
+            client,
             &with_unique_name(&formatdoc!(
                 r#"
                 apiVersion: v1

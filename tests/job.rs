@@ -7,10 +7,10 @@ struct ExitService<'a> {
 
 impl<'a> ExitService<'a> {
     pub fn new(client: &'a TestKubeClient, exit_code: i32) -> Self {
-        setup_repository(&client);
+        setup_repository(client);
 
         let pod = TemporaryResource::new(
-            &client,
+            client,
             &with_unique_name(&formatdoc!(
                 "
                 apiVersion: v1
