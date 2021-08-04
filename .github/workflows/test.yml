@@ -16,17 +16,17 @@ jobs:
         environment: [ aws-centos-8 ]
         include: 
 #          - environment: centos-7
-#            install_additional_build_packages: "yum install vim procps curl gcc make pkgconfig openssl-devel systemd-devel python3-pip container-selinux selinux-policy-base -y"
-#            install_git: "yum install git -y"
+#            install_additional_build_packages: "sudo yum install vim procps curl gcc make pkgconfig openssl-devel systemd-devel python3-pip container-selinux selinux-policy-base -y"
+#            install_git: "sudo yum install git -y"
 #          - environment: centos-8
-#            install_additional_build_packages: "yum install vim procps curl gcc make pkgconfig openssl-devel systemd-devel python3-pip container-selinux selinux-policy-base -y"
-#            install_git: "yum install git -y"
+#            install_additional_build_packages: "sudo yum install vim procps curl gcc make pkgconfig openssl-devel systemd-devel python3-pip container-selinux selinux-policy-base -y"
+#            install_git: "sudo yum install git -y"
 #          - environment: debian-10
-#            install_additional_build_packages: "apt-get install gcc libssl-dev pkg-config -y"
-#            install_git: "apt-get install git -y"
+#            install_additional_build_packages: "sudo apt-get install gcc libssl-dev pkg-config -y"
+#            install_git: "sudo apt-get install git -y"
           - environment: aws-centos-8
-            install_additional_build_packages: "yum install vim procps curl gcc make pkgconfig openssl-devel systemd-devel python3-pip container-selinux selinux-policy-base -y"
-            install_git: "yum install git -y"
+            install_additional_build_packages: "sudo yum install vim procps curl gcc make pkgconfig openssl-devel systemd-devel python3-pip container-selinux selinux-policy-base -y"
+            install_git: "sudo yum install git -y"
 
     runs-on: ubuntu-latest
 
@@ -59,20 +59,20 @@ jobs:
 
       - name: Test (step 1) - install Rust and required tools
         run: | 
-          ./stackable.sh testdriver-1 -i ./.cluster/key "echo '13.32.25.75     static.rust-lang.org' >> /etc/hosts"
-          ./stackable.sh testdriver-1 -i ./.cluster/key "curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y"
-          ./stackable.sh testdriver-1 -i ./.cluster/key "cargo --version"
-          ./stackable.sh testdriver-1 -i ./.cluster/key "${{matrix.install_additional_build_packages}}"
+          ./stackable.sh testdriver-1 -i ./.cluster/key 'sudo sh -c "echo \"13.32.25.75     static.rust-lang.org\" >> /etc/hosts"'
+          ./stackable.sh testdriver-1 -i ./.cluster/key 'curl --proto "=https" --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y'
+          ./stackable.sh testdriver-1 -i ./.cluster/key 'cargo --version'
+          ./stackable.sh testdriver-1 -i ./.cluster/key '${{matrix.install_additional_build_packages}}''
 
       - name: Test (step 2) - clone repository
         run: | 
-          ./stackable.sh testdriver-1 -i ./.cluster/key "${{matrix.install_git}}"
-          ./stackable.sh testdriver-1 -i ./.cluster/key "git --version"
-          ./stackable.sh testdriver-1 -i ./.cluster/key "git clone -b ${GITHUB_REF##*/} https://github.com/stackabletech/agent-integration-tests.git"
+          ./stackable.sh testdriver-1 -i ./.cluster/key '${{matrix.install_git}}'
+          ./stackable.sh testdriver-1 -i ./.cluster/key 'git --version'
+          ./stackable.sh testdriver-1 -i ./.cluster/key 'git clone -b ${GITHUB_REF##*/} https://github.com/stackabletech/agent-integration-tests.git'
  
       - name: Test (step 3) - run tests
         run: | 
-          ./stackable.sh testdriver-1 -i ./.cluster/key "cd agent-integration-tests/ && cargo test -- --test-threads=1"
+          ./stackable.sh testdriver-1 -i ./.cluster/key 'cd agent-integration-tests/ && cargo test -- --test-threads=1'
 
       - name: Terminate cluster via T2 API
         if: always()
