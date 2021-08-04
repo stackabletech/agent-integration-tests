@@ -12,18 +12,14 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        #environment: [ centos-7, centos-8, debian-10 ]
-        environment: [ aws-centos-8 ]
+        environment: [ centos-7, aws-centos-8, debian-10 ]
         include: 
-#          - environment: centos-7
-#            install_additional_build_packages: "sudo yum install vim procps curl gcc make pkgconfig openssl-devel systemd-devel python3-pip container-selinux selinux-policy-base -y"
-#            install_git: "sudo yum install git -y"
-#          - environment: centos-8
-#            install_additional_build_packages: "sudo yum install vim procps curl gcc make pkgconfig openssl-devel systemd-devel python3-pip container-selinux selinux-policy-base -y"
-#            install_git: "sudo yum install git -y"
-#          - environment: debian-10
-#            install_additional_build_packages: "sudo apt-get install gcc libssl-dev pkg-config -y"
-#            install_git: "sudo apt-get install git -y"
+          - environment: centos-7
+            install_additional_build_packages: "sudo yum install vim procps curl gcc make pkgconfig openssl-devel systemd-devel python3-pip container-selinux selinux-policy-base -y"
+            install_git: "sudo yum install git -y"
+          - environment: debian-10
+            install_additional_build_packages: "sudo apt-get install gcc libssl-dev pkg-config -y"
+            install_git: "sudo apt-get install git -y"
           - environment: aws-centos-8
             install_additional_build_packages: "sudo yum install vim procps curl gcc make pkgconfig openssl-devel systemd-devel python3-pip container-selinux selinux-policy-base -y"
             install_git: "sudo yum install git -y"
@@ -68,7 +64,7 @@ jobs:
         run: | 
           ./stackable.sh testdriver-1 -i ./.cluster/key '${{matrix.install_git}}'
           ./stackable.sh testdriver-1 -i ./.cluster/key 'git --version'
-          ./stackable.sh testdriver-1 -i ./.cluster/key 'git clone -b ${GITHUB_REF##*/} https://github.com/stackabletech/agent-integration-tests.git'
+          ./stackable.sh testdriver-1 -i ./.cluster/key "git clone -b ${GITHUB_REF##*/} https://github.com/stackabletech/agent-integration-tests.git"
  
       - name: Test (step 3) - run tests
         run: | 
