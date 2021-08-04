@@ -62,7 +62,7 @@ jobs:
           ./stackable.sh testdriver-1 -i ./.cluster/key 'sudo sh -c "echo \"13.32.25.75     static.rust-lang.org\" >> /etc/hosts"'
           ./stackable.sh testdriver-1 -i ./.cluster/key 'curl --proto "=https" --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y'
           ./stackable.sh testdriver-1 -i ./.cluster/key 'cargo --version'
-          ./stackable.sh testdriver-1 -i ./.cluster/key '${{matrix.install_additional_build_packages}}''
+          ./stackable.sh testdriver-1 -i ./.cluster/key '${{matrix.install_additional_build_packages}}'
 
       - name: Test (step 2) - clone repository
         run: | 
