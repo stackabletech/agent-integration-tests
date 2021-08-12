@@ -4,7 +4,8 @@ use std::{fmt, time::Duration};
 
 #[test]
 fn service_should_be_started_successfully() {
-    let client = TestKubeClient::new();
+    let mut client = TestKubeClient::new();
+    client.timeouts().delete = Duration::from_secs(60);
 
     setup_repository(&client);
 
@@ -37,7 +38,8 @@ fn service_should_be_started_successfully() {
 
 #[test]
 fn host_ip_and_node_ip_should_be_set() {
-    let client = TestKubeClient::new();
+    let mut client = TestKubeClient::new();
+    client.timeouts().delete = Duration::from_secs(60);
 
     setup_repository(&client);
 
@@ -89,7 +91,7 @@ fn restart_after_ungraceful_shutdown_should_succeed() {
 
     let mut client = TestKubeClient::new();
     // delete must await the end of the termination grace period
-    client.timeouts().delete += termination_grace_period;
+    client.timeouts().delete = Duration::from_secs(60) + termination_grace_period;
 
     setup_repository(&client);
 
