@@ -4,6 +4,7 @@ description = "Stackable Agent Integration tests"
 edition = "2018"
 license = "Apache-2.0"
 name = "agent-integration-tests"
+repository = "https://github.com/stackabletech/agent-integration-tests"
 version = "0.1.0"
 
 [dependencies]
