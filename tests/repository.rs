@@ -73,8 +73,9 @@ async fn invalid_or_unreachable_repositories_should_be_ignored() -> Result<()> {
         StackableRepositoryInstance::new(&repository_with_service, &client).await;
     result.combine(&repository3_result);
 
+    let pod_definition = service.pod("agent-service-integration-test-repository");
     let pod_result = client
-        .create::<Pod>(&service.pod_spec("agent-service-integration-test-repository"))
+        .create::<Pod>(&serde_yaml::to_string(&pod_definition).unwrap())
         .await;
     result.combine(&pod_result);
 

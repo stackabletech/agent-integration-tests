@@ -1,4 +1,8 @@
+use std::collections::BTreeMap;
+
 use flate2::{write::GzEncoder, Compression};
+use integration_test_commons::test::prelude::{Container, Pod, PodSpec, Toleration};
+use k8s_openapi::apimachinery::pkg::apis::meta::v1::ObjectMeta;
 
 /// Package with a shell script used for testing
 #[derive(Clone, Debug)]
@@ -43,32 +47,37 @@ impl TestPackage {
     }
 
     /// Creates a pod specification for this package
-    pub fn pod_spec(&self, pod_name: &str) -> String {
-        format!(
-            "
-            apiVersion: v1
-            kind: Pod
-            metadata:
-              name: {pod_name}
-            spec:
-              containers:
-                - name: {package_name}
-                  image: {package_name}:{package_version}
-                  command:
-                    - {command}
-              nodeSelector:
-                kubernetes.io/arch: stackable-linux
-              restartPolicy: {restart_policy}
-              tolerations:
-                - key: kubernetes.io/arch
-                  operator: Equal
-                  value: stackable-linux
-            ",
-            command = self.command(),
-            package_name = self.name,
-            package_version = self.version,
-            pod_name = pod_name,
-            restart_policy = if self.job { "Never" } else { "Always" },
-        )
+    pub fn pod(&self, pod_name: &str) -> Pod {
+        Pod {
+            metadata: ObjectMeta {
+                name: Some(String::from(pod_name)),
+                ..Default::default()
+            },
+            spec: Some(PodSpec {
+                containers: vec![Container {
+                    name: self.name.to_owned(),
+                    image: Some(format!("{}:{}", self.name, self.version)),
+                    command: vec![self.command()],
+                    ..Default::default()
+                }],
+                node_selector: {
+                    let mut selectors = BTreeMap::new();
+                    selectors.insert(
+                        String::from("kubernetes.io/arch"),
+                        String::from("stackable-linux"),
+                    );
+                    selectors
+                },
+                restart_policy: Some(String::from(if self.job { "Never" } else { "Always" })),
+                tolerations: vec![Toleration {
+                    key: Some(String::from("kubernetes.io/arch")),
+                    operator: Some(String::from("Equal")),
+                    value: Some(String::from("stackable-linux")),
+                    ..Default::default()
+                }],
+                ..Default::default()
+            }),
+            ..Default::default()
+        }
     }
 }
