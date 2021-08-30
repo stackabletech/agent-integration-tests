@@ -19,7 +19,7 @@ updates:
       - "stackabletech/rust-developers"
     ignore:
       # We never want to be notified about a kube-rs update
-      # It often contains breaking changes so it should only be updated manually 
+      # It often contains breaking changes so it should only be updated manually
       # together with kube-runtime, kube-derive etc.
       - dependency-name: "kube*"
       - dependency-name: "k8s-openapi"
