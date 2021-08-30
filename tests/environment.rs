@@ -39,8 +39,9 @@ async fn kubeconfig_should_be_set() -> Result<()> {
     let repository_result = StackableRepositoryInstance::new(&repository, &client).await;
     result.combine(&repository_result);
 
+    let pod_definition = job.pod("agent-service-integration-test-kubeconfig");
     let pod_result = client
-        .create(&job.pod_spec("agent-service-integration-test-kubeconfig"))
+        .create(&serde_yaml::to_string(&pod_definition).unwrap())
         .await;
     result.combine(&pod_result);
 

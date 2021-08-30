@@ -47,22 +47,21 @@ pub fn echo_service() -> TestPackage {
     }
 }
 
-/// The exit-service terminates immediately with the exit code contained
-/// in the environment variable `EXIT_CODE`. If the environment variable
-/// is not set then the exit code is 0.
+/// The exit-service terminates immediately with the given exit code.
 #[allow(dead_code)]
-pub fn exit_service() -> TestPackage {
+pub fn exit_service(exit_code: i8) -> TestPackage {
     TestPackage {
-        name: String::from("exit-service"),
+        name: format!("exit-service-{}", exit_code),
         version: String::from("1.0.0"),
         job: true,
-        script: String::from(indoc!(
+        script: formatdoc!(
             "
             #!/bin/sh
 
-            exit ${EXIT_CODE:-0}
-            "
-        )),
+            exit {}
+            ",
+            exit_code
+        ),
     }
 }
 
