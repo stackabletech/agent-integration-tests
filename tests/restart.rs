@@ -10,6 +10,8 @@ use util::{
 };
 use uuid::Uuid;
 
+const ANNOTATION_KEY_FEATURE_RESTART_COUNT: &str = "featureRestartCount";
+
 #[rstest]
 #[case::failing_service_should_be_restarted_on_restart_policy_always(
     "failing_service",
@@ -62,10 +64,14 @@ async fn service_should_be_restarted_according_to_the_restart_policy(
     )
     .await;
 
-    match expected_behavior {
-        "expect_restart" => verify_restart(&client, &mut result, &pod_result).await,
-        "expect_no_restart" => verify_no_restart(&client, &mut result, &pod_result).await,
-        other => panic!("invalid parameter: {}", other),
+    if let Ok(pod) = &pod_result {
+        if restart_count_enabled(&client, &mut result, pod).await {
+            match expected_behavior {
+                "expect_restart" => verify_restart(&client, &mut result, pod).await,
+                "expect_no_restart" => verify_no_restart(&client, &mut result, pod).await,
+                other => panic!("invalid parameter: {}", other),
+            }
+        }
     }
 
     tear_down(&client, &mut result, repository_result, pod_result).await;
@@ -122,42 +128,59 @@ async fn tear_down(
     }
 }
 
-async fn verify_restart(client: &KubeClient, result: &mut TestResult, pod_result: &Result<Pod>) {
-    if let Ok(pod) = &pod_result {
-        let verify_status_result = client
-            .verify_status(pod, |pod| {
-                pod.status
-                    .as_ref()
-                    .and_then(|status| status.container_statuses.first())
-                    .filter(|container_status| container_status.restart_count > 3)
-                    .is_some()
-            })
-            .await;
-        result.combine(&verify_status_result);
+async fn restart_count_enabled(client: &KubeClient, result: &mut TestResult, pod: &Pod) -> bool {
+    let get_annotation_result = client
+        .get_annotation::<Pod>(pod, ANNOTATION_KEY_FEATURE_RESTART_COUNT)
+        .await;
+    result.combine(&get_annotation_result);
+
+    match get_annotation_result.as_deref() {
+        Ok("true") => true,
+        Ok("false") => false,
+        Ok(value) => {
+            result.combine::<(), _>(&Err(format!(
+                "Pod annotation [{}] contains unknown value [{}]; \
+                expected [true] or [false]",
+                ANNOTATION_KEY_FEATURE_RESTART_COUNT, value,
+            )));
+            false
+        }
+        _ => false,
     }
 }
 
-async fn verify_no_restart(client: &KubeClient, result: &mut TestResult, pod_result: &Result<Pod>) {
-    if let Ok(pod) = &pod_result {
-        let verify_status_result = client
-            .verify_status(pod, |pod| {
-                let phase = pod.status.as_ref().and_then(|status| status.phase.as_ref());
-                phase == Some(&String::from("Succeeded")) || phase == Some(&String::from("Failed"))
-            })
-            .await;
-        result.combine(&verify_status_result);
-
-        let get_status_result = client.get_status(pod).await;
-        result.combine(&get_status_result);
-
-        if let Ok(pod) = get_status_result {
-            let restart_count_result = pod
-                .status
+async fn verify_restart(client: &KubeClient, result: &mut TestResult, pod: &Pod) {
+    let verify_status_result = client
+        .verify_status(pod, |pod| {
+            pod.status
                 .as_ref()
                 .and_then(|status| status.container_statuses.first())
-                .filter(|container_status| container_status.restart_count == 0)
-                .ok_or("Restart count is not 0.");
-            result.combine(&restart_count_result);
-        }
+                .filter(|container_status| container_status.restart_count > 3)
+                .is_some()
+        })
+        .await;
+    result.combine(&verify_status_result);
+}
+
+async fn verify_no_restart(client: &KubeClient, result: &mut TestResult, pod: &Pod) {
+    let verify_status_result = client
+        .verify_status(pod, |pod| {
+            let phase = pod.status.as_ref().and_then(|status| status.phase.as_ref());
+            phase == Some(&String::from("Succeeded")) || phase == Some(&String::from("Failed"))
+        })
+        .await;
+    result.combine(&verify_status_result);
+
+    let get_status_result = client.get_status(pod).await;
+    result.combine(&get_status_result);
+
+    if let Ok(pod) = get_status_result {
+        let restart_count_result = pod
+            .status
+            .as_ref()
+            .and_then(|status| status.container_statuses.first())
+            .filter(|container_status| container_status.restart_count == 0)
+            .ok_or("Restart count is not 0.");
+        result.combine(&restart_count_result);
     }
 }
