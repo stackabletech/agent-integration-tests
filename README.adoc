@@ -1,6 +1,6 @@
 = Agent integration tests
 
-image:https://github.com/stackabletech/agent-integration-tests/workflows/Rust/badge.svg[link="https://github.com/stackabletech/agent-integration-tests/actions"] image:https://github.com/stackabletech/agent-integration-tests/workflows/Security%20audit/badge.svg[link="https://github.com/stackabletech/agent-integration-tests/actions"] image:https://github.com/stackabletech/agent-integration-tests/workflows/Integration%20tests/badge.svg[link="https://github.com/stackabletech/agent-integration-tests/actions"]
+image:https://github.com/stackabletech/agent-integration-tests/workflows/Rust/badge.svg[link="https://github.com/stackabletech/agent-integration-tests/actions"] image:https://github.com/stackabletech/agent-integration-tests/workflows/Security%20audit/badge.svg[link="https://github.com/stackabletech/agent-integration-tests/actions"] image:https://ci.stackable.tech/job/Agent%20Integration%20Tests/badge/icon?subject=Integration%20Tests[link="https://ci.stackable.tech/job/Agent%20Integration%20Tests"]
 
 == Purpose
 The agent integration tests contain test cases for testing the
