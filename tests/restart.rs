@@ -154,7 +154,8 @@ async fn verify_restart(client: &KubeClient, result: &mut TestResult, pod: &Pod)
         .verify_status(pod, |pod| {
             pod.status
                 .as_ref()
-                .and_then(|status| status.container_statuses.first())
+                .and_then(|pod_status| pod_status.container_statuses.as_ref())
+                .and_then(|container_statuses| container_statuses.first())
                 .filter(|container_status| container_status.restart_count > 3)
                 .is_some()
         })
@@ -178,7 +179,8 @@ async fn verify_no_restart(client: &KubeClient, result: &mut TestResult, pod: &P
         let restart_count_result = pod
             .status
             .as_ref()
-            .and_then(|status| status.container_statuses.first())
+            .and_then(|pod_status| pod_status.container_statuses.as_ref())
+            .and_then(|container_statuses| container_statuses.first())
             .filter(|container_status| container_status.restart_count == 0)
             .ok_or("Restart count is not 0.");
         result.combine(&restart_count_result);

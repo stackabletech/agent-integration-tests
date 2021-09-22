@@ -57,7 +57,7 @@ impl TestPackage {
                 containers: vec![Container {
                     name: self.name.to_owned(),
                     image: Some(format!("{}:{}", self.name, self.version)),
-                    command: vec![self.command()],
+                    command: Some(vec![self.command()]),
                     ..Default::default()
                 }],
                 node_selector: {
@@ -66,15 +66,15 @@ impl TestPackage {
                         String::from("kubernetes.io/arch"),
                         String::from("stackable-linux"),
                     );
-                    selectors
+                    Some(selectors)
                 },
                 restart_policy: Some(String::from(if self.job { "Never" } else { "Always" })),
-                tolerations: vec![Toleration {
+                tolerations: Some(vec![Toleration {
                     key: Some(String::from("kubernetes.io/arch")),
                     operator: Some(String::from("Equal")),
                     value: Some(String::from("stackable-linux")),
                     ..Default::default()
-                }],
+                }]),
                 ..Default::default()
             }),
             ..Default::default()
