@@ -11,7 +11,7 @@ spec:
   region: eu-central-1
   wireguard: false
   versions:
-    stackable-agent: "*0.nightly.el8.x86_64"
+    stackable-agent: "$AGENT_VERSION"
   nodes:
     main:
       numberOfNodes: 1
