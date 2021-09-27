@@ -3,11 +3,9 @@ mod util;
 use anyhow::Result;
 use integration_test_commons::test::prelude::*;
 
-use util::{
-    repository::{StackableRepository, StackableRepositoryInstance},
-    result::TestResult,
-    test_package::TestPackage,
-};
+use util::repository::StackableRepositoryBuilder;
+use util::result::TestResult;
+use util::test_package::TestPackage;
 
 #[tokio::test]
 async fn kubeconfig_should_be_set() -> Result<()> {
@@ -32,11 +30,10 @@ async fn kubeconfig_should_be_set() -> Result<()> {
         )),
     };
 
-    let repository = StackableRepository {
-        name: String::from("kubeconfig-test-repository"),
-        packages: vec![job.to_owned()],
-    };
-    let repository_result = StackableRepositoryInstance::new(&repository, &client).await;
+    let repository_result = StackableRepositoryBuilder::new("kubeconfig-test-repository")
+        .package(&job)
+        .run(&client)
+        .await;
     result.combine(&repository_result);
 
     let pod_definition = job.pod("agent-service-integration-test-kubeconfig");

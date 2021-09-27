@@ -3,12 +3,12 @@ mod util;
 use anyhow::Result;
 use integration_test_commons::test::prelude::*;
 use rstest::rstest;
-use util::{
-    repository::{StackableRepository, StackableRepositoryInstance},
-    result::TestResult,
-    services::exit_service,
-};
+use util::repository::StackableRepositoryInstance;
+use util::result::TestResult;
+use util::services::exit_service;
 use uuid::Uuid;
+
+use crate::util::repository::StackableRepositoryBuilder;
 
 const ANNOTATION_KEY_FEATURE_RESTART_COUNT: &str = "featureRestartCount";
 
@@ -87,11 +87,11 @@ async fn set_up(
 ) -> (Result<StackableRepositoryInstance>, Result<Pod>) {
     let service = exit_service(if succeeding { 0 } else { 1 });
 
-    let repository = StackableRepository {
-        name: format!("restart-test-repository-{}", Uuid::new_v4()),
-        packages: vec![service.to_owned()],
-    };
-    let repository_result = StackableRepositoryInstance::new(&repository, client).await;
+    let repository_name = format!("restart-test-repository-{}", Uuid::new_v4());
+    let repository_result = StackableRepositoryBuilder::new(&repository_name)
+        .package(&service)
+        .run(client)
+        .await;
     result.combine(&repository_result);
 
     let mut pod_definition = service.pod(&format!(
