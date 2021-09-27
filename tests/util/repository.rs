@@ -1,18 +1,34 @@
+use std::net::IpAddr;
+use std::{collections::HashMap, net::SocketAddr};
+
 use anyhow::anyhow;
 use anyhow::Result;
 use http::Uri;
-use integration_test_commons::test::prelude::*;
+use integration_test_commons::test::kube::KubeClient;
+use kube::CustomResource;
 use nix::ifaddrs;
 use nix::net::if_::InterfaceFlags;
 use nix::sys::socket::SockAddr;
-use serde::Serialize;
+use schemars::JsonSchema;
+use serde::{Deserialize, Serialize};
 use sha2::{Digest, Sha512};
-use std::net::IpAddr;
-use std::{collections::HashMap, net::SocketAddr};
 use tokio::sync::oneshot::{self, Sender};
 use warp::{path::FullPath, Filter};
 
 use super::test_package::TestPackage;
+
+/// Specification of a Stackable repository
+#[derive(CustomResource, Deserialize, Serialize, Clone, Debug, JsonSchema)]
+#[kube(
+    kind = "Repository",
+    group = "stable.stackable.de",
+    version = "v1",
+    namespaced
+)]
+pub struct RepositorySpec {
+    pub repo_type: String,
+    pub properties: HashMap<String, String>,
+}
 
 /// A specific version of a package in a Stackable repository
 #[derive(Clone, Debug, Eq, PartialEq, Serialize)]
@@ -63,55 +79,102 @@ impl From<&[TestPackage]> for StackableRepositoryMetadata {
     }
 }
 
-/// Named Stackable repository with test packages
-pub struct StackableRepository {
-    pub name: String,
-    pub packages: Vec<TestPackage>,
+/// Builder for a Stackable repository with test packages
+pub struct StackableRepositoryBuilder {
+    name: String,
+    repo_type: String,
+    packages: Vec<TestPackage>,
+    serve: bool,
+    uri: Option<String>,
+}
+
+impl StackableRepositoryBuilder {
+    /// Creates an instance with the given repository name and type `StackableRepo`.
+    pub fn new(name: &str) -> Self {
+        StackableRepositoryBuilder {
+            name: String::from(name),
+            repo_type: String::from("StackableRepo"),
+            packages: Vec::new(),
+            serve: true,
+            uri: None,
+        }
+    }
+
+    /// Changes the repo type.
+    #[allow(dead_code)]
+    pub fn repo_type(&mut self, repo_type: &str) -> &Self {
+        self.repo_type = repo_type.to_owned();
+        self
+    }
+
+    /// Adds the given package to the repository.
+    #[allow(dead_code)]
+    pub fn package(&mut self, package: &TestPackage) -> &Self {
+        self.packages.push(package.to_owned());
+        self
+    }
+
+    /// Sets an URI.
+    ///
+    /// A web server serving the given packages will not be started.
+    #[allow(dead_code)]
+    pub fn uri(&mut self, uri: &Option<String>) -> &Self {
+        self.serve = false;
+        self.uri = uri.to_owned();
+        self
+    }
+
+    /// Creates a new instance of a Stackable repository
+    ///
+    /// If `uri` was not changed then a web server is started providing the repository content. The
+    /// repository is created on the Kubernetes API server.
+    ///
+    /// [`StackableRepositoryInstance::close`] must be called to stop and clean up this instance.
+    pub async fn run(&self, client: &KubeClient) -> Result<StackableRepositoryInstance> {
+        let (uri, shutdown_sender) = if self.serve {
+            let (address, shutdown_sender) = serve(&self.packages)?;
+            let uri = Uri::builder()
+                .scheme("http")
+                .authority(address.to_string().as_str())
+                .path_and_query("/")
+                .build()
+                .unwrap()
+                .to_string();
+            (Some(uri), Some(shutdown_sender))
+        } else {
+            (self.uri.to_owned(), None)
+        };
+
+        match register(client, &self.name, &self.repo_type, &uri).await {
+            Ok(repository) => {
+                let instance = StackableRepositoryInstance {
+                    name: self.name.to_owned(),
+                    repository,
+                    shutdown_sender,
+                };
+                Ok(instance)
+            }
+            Err(error) => {
+                if let Some(shutdown_sender) = shutdown_sender {
+                    let _ = shutdown_sender.send(());
+                };
+                Err(error)
+            }
+        }
+    }
 }
 
 /// A running instance of a Stackable repository
 pub struct StackableRepositoryInstance {
     name: String,
     repository: Repository,
-    shutdown_sender: Sender<()>,
+    shutdown_sender: Option<Sender<()>>,
 }
 
 impl StackableRepositoryInstance {
-    /// Creates a new instance of a Stackable repository
-    ///
-    /// A web server is started providing the repository content and
-    /// the repository is created on the Kubernetes API server.
-    ///
-    /// `close` must be called to stop and clean up this instance.
-    pub async fn new(
-        stackable_repository: &StackableRepository,
-        client: &KubeClient,
-    ) -> Result<Self> {
-        match serve(&stackable_repository.packages) {
-            Ok((address, shutdown_sender)) => {
-                match register(client, &stackable_repository.name, &address).await {
-                    Ok(repository) => {
-                        let instance = StackableRepositoryInstance {
-                            name: stackable_repository.name.to_owned(),
-                            repository,
-                            shutdown_sender,
-                        };
-                        Ok(instance)
-                    }
-                    Err(error) => {
-                        let _ = shutdown_sender.send(());
-                        Err(error)
-                    }
-                }
-            }
-            Err(error) => Err(error),
-        }
-    }
-
     /// Closes the Stackable repository instance
     ///
-    /// The repository is deleted on the Kubernetes API server and the
-    /// web server is shut down.
+    /// The repository is deleted on the Kubernetes API server and the web server is shut down.
     pub async fn close(self, client: &KubeClient) -> Result<()> {
         let mut errors = Vec::new();
 
@@ -122,11 +185,13 @@ impl StackableRepositoryInstance {
             ));
         }
 
-        if let Err(()) = self.shutdown_sender.send(()) {
-            errors.push(format!(
-                "Repository server [{:?}] could not be shut down",
-                self.name
-            ));
+        if let Some(shutdown_sender) = self.shutdown_sender {
+            if let Err(()) = shutdown_sender.send(()) {
+                errors.push(format!(
+                    "Repository server [{:?}] could not be shut down",
+                    self.name
+                ));
+            }
         }
 
         if errors.is_empty() {
@@ -137,11 +202,9 @@ impl StackableRepositoryInstance {
     }
 }
 
-/// Starts a web server providing a Stackable repository with the given
-/// test packages.
+/// Starts a web server providing a Stackable repository with the given test packages.
 ///
-/// The web server is bound to the IP address of the default interface
-/// on an ephemeral port.
+/// The web server is bound to the IP address of the default interface on an ephemeral port.
 fn serve(packages: &[TestPackage]) -> Result<(SocketAddr, Sender<()>)> {
     let ip_address = default_ip_address()?;
     let socket_address = SocketAddr::new(ip_address, 0);
@@ -178,8 +241,8 @@ fn serve(packages: &[TestPackage]) -> Result<(SocketAddr, Sender<()>)> {
     Ok((address, tx))
 }
 
-/// Returns the IP address of a network interface which is up and which
-/// is not the loopback interface.
+/// Returns the IP address of a network interface which is up and which is not the loopback
+/// interface.
 ///
 /// Usually the default IP address is returned.
 fn default_ip_address() -> Result<IpAddr> {
@@ -207,30 +270,26 @@ fn default_ip_address() -> Result<IpAddr> {
 async fn register(
     client: &KubeClient,
     repository_name: &str,
-    address: &SocketAddr,
+    repository_type: &str,
+    uri: &Option<String>,
 ) -> Result<Repository> {
-    let uri = Uri::builder()
-        .scheme("http")
-        .authority(address.to_string().as_str())
-        .path_and_query("/")
-        .build()
-        .unwrap();
-
-    let spec = formatdoc!(
-        "
-        apiVersion: stable.stackable.de/v1
-        kind: Repository
-        metadata:
-            name: {}
-            namespace: default
-        spec:
-            repo_type: StackableRepo
-            properties:
-                url: {}
-        ",
+    let repository = Repository::new(
         repository_name,
-        uri
+        RepositorySpec {
+            repo_type: repository_type.to_owned(),
+            properties: {
+                let mut props = HashMap::new();
+
+                if let Some(uri) = uri {
+                    props.insert(String::from("url"), uri.to_owned());
+                }
+
+                props
+            },
+        },
     );
 
-    client.create::<Repository>(&spec).await
+    client
+        .create::<Repository>(&serde_yaml::to_string(&repository).unwrap())
+        .await
 }
