@@ -39,7 +39,7 @@ jobs:
         run: |
           which python3
 
-      - uses: actions/checkout@v2.3.4
+      - uses: actions/checkout@v2.3.5
 
       - name: Download T2 cluster launch script
         run: |
