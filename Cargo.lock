@@ -633,8 +633,8 @@ dependencies = [
 
 [[package]]
 name = "integration-test-commons"
-version = "0.5.0"
-source = "git+https://github.com/stackabletech/integration-test-commons.git?tag=0.5.0#a2fbd7fa7f1152896730d89409e69ae3e804402f"
+version = "0.6.0"
+source = "git+https://github.com/stackabletech/integration-test-commons.git?tag=0.6.0#f2cf4ead8c6a3eb723ddcb9a5c804aeef9ffb5e9"
 dependencies = [
  "anyhow",
  "futures",

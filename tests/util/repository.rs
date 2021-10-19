@@ -3,7 +3,8 @@ use std::{collections::HashMap, net::SocketAddr};
 
 use anyhow::anyhow;
 use anyhow::Result;
-use http::Uri;
+use http::header::CONTENT_TYPE;
+use http::{HeaderValue, Response, Uri};
 use integration_test_commons::test::kube::KubeClient;
 use kube::CustomResource;
 use nix::ifaddrs;
@@ -13,6 +14,7 @@ use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 use sha2::{Digest, Sha512};
 use tokio::sync::oneshot::{self, Sender};
+use warp::hyper::Body;
 use warp::{path::FullPath, Filter};
 
 use super::test_package::TestPackage;
@@ -222,7 +224,12 @@ fn serve(packages: &[TestPackage]) -> Result<(SocketAddr, Sender<()>)> {
             packages
                 .iter()
                 .find(|package| format!("/{}", package.repository_path()) == path.as_str())
-                .map(|package| package.binary())
+                .map(|package| {
+                    Response::builder()
+                        .header(CONTENT_TYPE, HeaderValue::from_static("application/gzip"))
+                        .body(Body::from(package.binary()))
+                        .unwrap()
+                })
                 .ok_or_else(warp::reject::not_found)
         }
     });
