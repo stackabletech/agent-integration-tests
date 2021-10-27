@@ -1,7 +1,7 @@
 ---
 apiVersion: t2.stackable.tech/v1
 kind: Infra
-template: demo-debian-10
+template: ionos-debian-10
 metadata: 
   name: agent-integration-tests
   description: "Cluster for Agent Integration Tests (IONOS / Debian 10)"
